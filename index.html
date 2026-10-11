@@ -89,6 +89,10 @@
   .note.ok div{color:var(--muted)}
   .note.warn{background:rgba(245,197,66,.07);border:1px solid rgba(245,197,66,.3);color:var(--muted);display:block}
   .note.warn b{color:var(--gold)}
+  .note.bad{background:rgba(224,110,90,.08);border:1px solid rgba(224,110,90,.4);color:var(--muted);display:block}
+  .note.bad b{color:var(--bad)}
+  tr.sample td{color:var(--bad)}
+  tr.sample td:first-child{font-weight:600}
   /* ── the page ─────────────────────────────────────────────────────────── */
   body{
     background:#0a0c11;
@@ -331,6 +335,25 @@ const norm = (s) => txt(s).toLowerCase().replace(/\s+/g, ' ');
 // one name for headers that mean the same thing, so they never read as a change
 const key = (s) => { const n = norm(s); const g = SAME_AS.find(a => a.includes(n)); return g ? g[0] : n; };
 const skipped = (h) => SKIP_COLUMNS.some(c => norm(c) === norm(h));
+
+// One rule for deciding whether two column names are the same column, used by
+// the conformance diff AND by the mandatory-column check, so the page can never
+// call a column present in one place and missing in the other.
+//
+// Two names are the same column when they differ only by punctuation, spacing
+// or case. Brackets in particular are ignored: "Extended warranty Applicable
+// Y/N" and "Extended warranty applicable (Y/N)" are one column written two
+// ways, not two columns.
+//
+// On top of that, a trailing "English" is optional — the template labels its
+// bilingual pairs "(English)"/"(Arabic)", and a file carrying only the English
+// one usually writes it plain: "Warranty" for "Warranty(English)", "Whats in
+// the Box" for "Whats in the Box(English)". "Arabic" is NOT optional, so a
+// missing Arabic column is still reported as missing.
+const colKey = (s) => key(s)
+  .replace(/[^a-z0-9]/g, '')   // punctuation, brackets, spacing, case
+  .replace(/english$/, '');    // the optional language tag, bracketed or not
+
 const isYes = (v) => /^(y|yes)$/i.test(txt(v));
 
 function sheetRows(wb, name) {
@@ -372,36 +395,36 @@ const LS = 'pmchecker.mandatory.v2';
 function headerDiff(tHeader, sHeader) {
   const t = tHeader.map(txt).filter(h => h && !skipped(h));
   const s = sHeader.map(txt).filter(h => h && !skipped(h));
-  const tn = t.map(key), sn = s.map(key);
+  const tn = t.map(colKey), sn = s.map(colKey);
 
   const missing = t.filter((h, i) => !sn.includes(tn[i]));
   const added   = s.filter((h, i) => !tn.includes(sn[i]));
 
-  // "Installation " and "Installation" are not a removal plus an addition — they
-  // are the same column typed differently. Pair those off so the real list is short.
-  const spacing = [];
-  for (let i = missing.length - 1; i >= 0; i--) {
-    const loose = key(missing[i]).replace(/[^a-z0-9]/g, '');
-    const j = added.findIndex(a => key(a).replace(/[^a-z0-9]/g, '') === loose);
-    if (j >= 0) { spacing.push([missing[i], added[j]]); missing.splice(i, 1); added.splice(j, 1); }
-  }
+  // Columns that DID match but are not spelled the same way. Not a problem, and
+  // never counted as missing — but worth saying, so nobody goes hunting for a
+  // column they are looking straight at. ("Installation " and "Installation";
+  // "Extended warranty Applicable Y/N" and "Extended warranty applicable (Y/N)".)
+  const spacing = [], seen = new Set();
+  t.forEach((h, i) => {
+    const j = sn.indexOf(tn[i]);
+    if (j < 0 || norm(h) === norm(s[j])) return;
+    const id = norm(h) + '\u0001' + norm(s[j]);
+    if (seen.has(id)) return;
+    seen.add(id); spacing.push([h, s[j]]);
+  });
 
-  const dupes = [...new Set(s.filter((x, i) => sn.indexOf(key(x)) !== i))];
+  // "used twice" means literally the same name twice, like the two "Old item id"
+  // columns. It is NOT two names that merely match loosely: the template itself
+  // carries both "Warranty" and "Warranty(English)", and calling that a
+  // duplicate would invent a problem the file does not have.
+  const sNorm = s.map(norm);
+  const dupes = [...new Set(s.filter((x, i) => sNorm.indexOf(norm(x)) !== i))];
+
   const common = t.filter((h, i) => sn.includes(tn[i]));
   const orderChanged = common.some((h, k) => {
     const next = common[k + 1];
-    return next && sn.indexOf(key(h)) > sn.indexOf(key(next));
+    return next && sn.indexOf(colKey(h)) > sn.indexOf(colKey(next));
   });
-  // A column the file "lacks" while holding one spelled almost the same is not
-  // a missing column — it is the same column typed differently, and calling it
-  // missing sends somebody hunting for a column they are looking straight at.
-  // (The template itself carries both "Extended warranty Applicable Y/N" and
-  // "Extended warranty applicable (Y/N)", which is how this arises.)
-  const loose = (x) => key(x).replace(/[^a-z0-9]/g, '');
-  for (let i = missing.length - 1; i >= 0; i--) {
-    const hit = s.find(x => loose(x) === loose(missing[i]) && key(x) !== key(missing[i]));
-    if (hit) { spacing.push([missing[i], hit]); missing.splice(i, 1); }
-  }
   return { missing, added, spacing, dupes, orderChanged, tCount: t.length, sCount: s.length };
 }
 
@@ -461,15 +484,47 @@ function checkCategories() {
   const keepCols = header.map((h, i) => ({ h, i })).filter(c => c.h && !skipped(c.h));
   const data = realRows(rows.slice(fh.idx + 1));
 
+  // The template ships with a worked example in this sheet. If that exact path
+  // comes back it was never replaced, and it would be created in D365 as a real
+  // category. The sample is read out of the template, so it keeps up if the
+  // template's example is ever changed; the whole path must match, because
+  // "Electronics" on its own is a perfectly real level.
+  const samples = tplSamplePaths();
+  const found = [];
+
   const list = data.slice(0, 500).map(r => {
     const parts = keepCols.map(c => txt(r[c.i])).filter(Boolean);
-    return `<tr><td>${esc(parts[parts.length - 1] || '')}</td><td class="muted">${esc(parts.join(' › '))}</td></tr>`;
+    const isSample = samples.has(parts.map(norm).join('\u0001'));
+    if (isSample) found.push(parts.join(' › '));
+    return `<tr${isSample ? ' class="sample"' : ''}><td>${esc(parts[parts.length - 1] || '')}</td>` +
+           `<td class="${isSample ? '' : 'muted'}">${esc(parts.join(' › '))}` +
+           `${isSample ? ' <span class="pill err">template sample</span>' : ''}</td></tr>`;
   }).join('');
 
-  return card('Category Hierarchy', `<span class="n">${data.length}</span>`,
+  return card('Category Hierarchy',
+    found.length ? `<span class="pill err">template sample not removed</span>` : `<span class="n">${data.length}</span>`,
     headerNote(fh, 'Category Hierarchy') +
-    `<div class="muted" style="margin-bottom:10px">categories to be ecom enabled &mdash; ${keepCols.length} levels</div>
-     <div class="scroll"><table><thead><tr><th style="width:230px">Category</th><th>Full path</th></tr></thead><tbody>${list}</tbody></table></div>`);
+    `<div class="muted" style="margin-bottom:10px">categories to be ecom enabled &mdash; ${keepCols.length} levels</div>` +
+    (found.length ? `
+      <div class="note bad" style="margin:0 0 16px">
+        <b>Template sample not removed.</b>
+        ${found.length === 1 ? 'This row is' : 'These ' + found.length + ' rows are'} the example
+        ${found.length === 1 ? 'path' : 'paths'} that ship inside the master template, returned unchanged.
+        ${found.length === 1 ? 'It was' : 'They were'} meant to be replaced, not kept &mdash;
+        ${found.length === 1 ? 'it' : 'they'} would be created as ${found.length === 1 ? 'a real category' : 'real categories'}.
+        <div class="tags" style="margin-top:8px">${found.map(p => `<span class="tag" style="color:var(--bad);border-color:#5a2a20">${esc(p)}</span>`).join('')}</div>
+      </div>` : '') +
+    `<div class="scroll"><table><thead><tr><th style="width:230px">Category</th><th>Full path</th></tr></thead><tbody>${list}</tbody></table></div>`);
+}
+
+// Every data row of the template's own Category Hierarchy, as a normalised path.
+function tplSamplePaths() {
+  const t = sheetRows(TPL, 'Category Hierarchy');
+  if (!t.length) return new Set();
+  const cols = t[0].map(txt).map((h, i) => ({ h, i })).filter(c => c.h && !skipped(c.h));
+  return new Set(realRows(t.slice(1))
+    .map(r => cols.map(c => norm(txt(r[c.i]))).filter(Boolean).join('\u0001'))
+    .filter(Boolean));
 }
 
 function checkAttributeTypes() {
@@ -601,44 +656,138 @@ function checkAttributeValues() {
      </div>` : ''}`);
 }
 
-function checkItemAttributes() {
-  const rows = sheetRows(SUB, 'Item Attributes');
-  if (!rows.length) return card('Item Attributes', '<span class="pill err">sheet missing</span>', '');
+// This sheet is NOT one table. It is a run of blocks, one per product type,
+// each with its OWN header row and its OWN attribute columns, separated by a
+// blank row. Reading it as a single table takes the first block's header and
+// applies it to everything, which is wrong for every block after the first.
+// Both the banner at the top of the page and the Item Attributes card read it
+// through here, so there is one parse and the two can never disagree.
+// Names seen for the item-code column across returned files. "UTC Code" is one
+// of them. Deliberately NOT here: "Article Code" and "Model No.", which sit in
+// the same sheet and hold the VENDOR's code — matching those would silently
+// reconcile the wrong column and look like it worked.
+const AT_ITEM = /^(item\s*code|sku|item\s*number|item\s*no\.?|utc\s*code|utc\s*item\s*code)$/i;
+const AT_CAT = /^categor/i, AT_PT = /^product\s*type$/i;
+const atCol = (h, re) => h.findIndex(x => re.test(x));
 
-  // This sheet is NOT one table. It is a run of blocks, one per product type,
-  // each with its OWN header row and its OWN attribute columns, separated by a
-  // blank row. Reading it as a single table takes the first block's header and
-  // applies it to everything, which is wrong for every block after the first.
-  const isHeaderRow = (c) => c.some(v => /^(sku|item\s*code|item\s*number)$/i.test(v));
+// The item numbers from the Items sheet, used to CONFIRM that the column
+// picked out of Item Attributes is really the item code. A header name is a
+// hint; agreeing with the Items sheet is proof.
+function itemsCodeSet() {
+  const rows = sheetRows(SUB, 'Items');
+  if (!rows.length) return new Set();
+  const fh = findHeader(rows, sheetRows(TPL, 'Items')[0] || []);
+  const ix = colIndex(rows[fh.idx].map(txt), /^(item\s*number|item\s*code|sku)$/i);
+  if (ix < 0) return new Set();
+  return new Set(realRows(rows.slice(fh.idx + 1)).map(r => norm(r[ix])).filter(Boolean));
+}
+
+function itemAttrBlocks() {
+  const rows = sheetRows(SUB, 'Item Attributes');
+  if (!rows.length) return null;
+
+  // Which rows start a block. Normally the header names give it away. But if
+  // the sheet calls the item code something unheard of, NO row matches by name,
+  // every header row gets read as data, and the counts come out wrong — which
+  // is how "44 rows have no item code" happened. So when the names fail, fall
+  // back to shape: the blocks in these files all repeat the same header, give
+  // or take the attribute columns on the end, so a row that looks like row 1 is
+  // a header row.
+  const cells = rows.map(r => r.map(txt));
+  let isHeaderRow = (c) => c.some(v => AT_ITEM.test(v));
+  if (!cells.some(isHeaderRow)) {
+    // Each block repeats the same LEADING columns — Brand, Article Code, UTC
+    // Code, Product Description, Model, Product Type — then its own attribute
+    // columns, which differ completely between blocks. So the test is a
+    // matching leading run of labels, not overall similarity: header rows here
+    // share six leading cells with the first row, data rows share none.
+    const first = cells.find(c => c.some(Boolean)) || [];
+    const run = (c) => {
+      let n = 0;
+      while (n < first.length && first[n] && c[n] && norm(first[n]) === norm(c[n])) n++;
+      return n;
+    };
+    if (run(first) >= 3) isHeaderRow = (c) => run(c) >= 3;
+  }
+
+  const known = itemsCodeSet();
   const blocks = [];
+  const strays = [];
   let cur = null;
-  rows.forEach((r, i) => {
-    const c = r.map(txt);
+  cells.forEach((c, i) => {
     if (!c.some(Boolean)) { cur = null; return; }
     if (isHeaderRow(c)) { cur = { header: c, row: i, items: [] }; blocks.push(cur); return; }
+    // A row with a single cell in it is somebody typing in the wrong place, not
+    // an item: an item needs a code AND something to say about it. One such row
+    // ("li", alone in column V) was enough to make a whole sheet unreadable.
+    // Kept if that lone cell is a real item code, so nothing real is dropped.
+    const filled = c.filter(Boolean);
+    if (filled.length < 2 && !known.has(norm(filled[0]))) { strays.push(i); return; }
     if (cur) cur.items.push(c);
     else { cur = { header: c.map((_, k) => 'Column ' + (k + 1)), row: i, items: [c], noHeader: true }; blocks.push(cur); }
   });
 
-  const at = (h, re) => h.findIndex(x => re.test(x));
-  const ITEM = /^(item\s*code|sku|item\s*number)$/i, CAT = /^categor/i, PT = /^product\s*type$/i;
+  // Which column holds the item code. The header name decides it when the name
+  // is one we know. When it is not — a sheet calling it something unheard of,
+  // or a block with no header at all — fall back to whichever column actually
+  // contains the Items sheet's item numbers.
+  //
+  // If NEITHER works, the column is unknown, and that is said out loud. The old
+  // behaviour was to read column -1, get "" for every row, and then report
+  // "44 rows have no item code" — a precise, confident, completely wrong answer
+  // produced from a sheet it had failed to read. A validator must not do that.
+  // The value scan is done ACROSS the whole sheet, not block by block. Several
+  // blocks here hold a single item, and one row matching could be coincidence —
+  // but one column holding the Items sheet's codes right down the sheet is not.
+  const needValue = blocks.filter(b => atCol(b.header, AT_ITEM) < 0);
+  let valueCol = -1;
+  if (needValue.length && known.size) {
+    const width = Math.max(0, ...blocks.flatMap(b => b.items.map(r => r.length)));
+    const total = needValue.reduce((n, b) => n + b.items.length, 0);
+    let bestHits = 0;
+    for (let k = 0; k < width; k++) {
+      const hits = needValue.reduce((n, b) => n + b.items.filter(r => known.has(norm(r[k]))).length, 0);
+      if (hits > bestHits) { bestHits = hits; valueCol = k; }
+    }
+    if (bestHits < 2 || bestHits < total * 0.5) valueCol = -1;
+  }
 
+  const unreadable = [];
   let all = [], incomplete = 0;
   for (const b of blocks) {
-    const i = at(b.header, ITEM), c = at(b.header, CAT), p = at(b.header, PT);
+    let i = atCol(b.header, AT_ITEM);
+    if (i < 0 && valueCol >= 0) { i = valueCol; b.foundByValue = b.header[valueCol]; }
+    b.itemCol = i;
+    if (i < 0) unreadable.push(b);
+
+    const c = atCol(b.header, AT_CAT), p = atCol(b.header, AT_PT);
     for (const r of b.items) {
-      const row = { item: txt(r[i]), pt: txt(r[p]), cat: txt(r[c]) };
-      if (!row.item || !row.pt || !row.cat) incomplete++;
+      const row = { item: i < 0 ? null : txt(r[i]), pt: txt(r[p]), cat: txt(r[c]) };
+      if (row.item === null || !row.item || !row.pt || !row.cat) incomplete++;
       all.push(row);
     }
   }
-  const step1 = all.map(r => `<tr><td>${esc(r.item)}</td>
+  return { blocks, all, incomplete, unreadable, strays, knownCodes: known };
+}
+
+function checkItemAttributes() {
+  const parsed = itemAttrBlocks();
+  if (!parsed) return card('Item Attributes', '<span class="pill err">sheet missing</span>', '');
+  const { blocks, all, incomplete, unreadable } = parsed;
+
+  const at = atCol;
+  const CAT = AT_CAT, PT = AT_PT;
+
+  // item === null means the column could not be identified at all. Saying
+  // "missing" there would blame the file for the tool's own blind spot.
+  const step1 = all.map(r => `<tr><td>${r.item === null
+        ? '<span class="pill wrn">column not found</span>' : esc(r.item)}</td>
       <td>${r.pt ? esc(r.pt) : '<span class="pill err">missing</span>'}</td>
       <td>${r.cat ? esc(r.cat) : '<span class="pill err">missing</span>'}</td></tr>`).join('');
 
   let tagN = 0;
   const step2 = blocks.map((b) => {
-    const i = at(b.header, ITEM), c = at(b.header, CAT), p = at(b.header, PT);
+    const i = b.itemCol, c = at(b.header, CAT), p = at(b.header, PT);
     const cats = [...new Set(b.items.map(r => txt(r[c])).filter(Boolean))];
     const pts = [...new Set(b.items.map(r => txt(r[p])).filter(Boolean))];
     const attrs = b.header.filter((hd, x) => hd && x !== i && x !== c && x !== p && !skipped(hd));
@@ -656,13 +805,129 @@ function checkItemAttributes() {
     </tr>`;
   }).join('');
 
+  // The Items-vs-Item-Attributes reconciliation is NOT shown here. It is the
+  // first thing on the page, above every card — if the two sheets disagree,
+  // nothing below is worth reading yet.
   return card('Item Attributes', `<span class="n">${all.length}</span>`,
+    (unreadable.length ? `<div class="note warn" style="margin:0 0 14px">
+       <b>The item-code column could not be found</b> in
+       ${unreadable.length === 1 ? 'one block' : unreadable.length + ' blocks'} of this sheet, so the
+       codes below are blank for ${unreadable.length === 1 ? 'that block' : 'those blocks'}. That is this
+       tool not recognising the column name, not the file leaving it out.</div>` : '') +
     `<div class="muted" style="margin-bottom:6px"><b>Step 1</b> &mdash; item code against product type and category
        ${incomplete ? `&nbsp;<span class="pill err">${incomplete} row${incomplete > 1 ? 's' : ''} incomplete</span>` : '&nbsp;<span class="pill yes">all complete</span>'}</div>
      <div class="scroll" style="max-height:300px"><table><thead><tr><th style="width:190px">Item code</th><th style="width:220px">Product type</th><th>Category</th></tr></thead><tbody>${step1}</tbody></table></div>
      <div class="muted" style="margin:18px 0 6px"><b>Step 2</b> &mdash; ${blocks.length} block${blocks.length > 1 ? 's' : ''}, each with its own attribute headers</div>
      <table><thead><tr><th style="width:240px">Category / last level</th><th>Attribute headers</th></tr></thead><tbody>${step2}</tbody></table>
      <div class="hint">click a tag, then use &larr; and &rarr; to step through them</div>`);
+}
+
+// ── Items vs Item Attributes ────────────────────────────────────────────────
+// Compares the item codes in the two sheets. Codes are matched on a trimmed,
+// case-folded value: a trailing space or a change of case is the same item to
+// a human and must not be reported as two different problems.
+function reconcileItems(attrCodes) {
+  const rows = sheetRows(SUB, 'Items');
+  if (!rows.length) return { noItems: true, ok: false };
+  const fh = findHeader(rows, sheetRows(TPL, 'Items')[0]);
+  const header = rows[fh.idx].map(txt);
+  // "Item number" in Items, "Item code" or "SKU" in Item Attributes - same thing.
+  const ix = colIndex(header, /^(item\s*number|item\s*code|sku)$/i);
+  if (ix < 0) return { noCodeCol: true, ok: false };
+
+  const itemRows = realRows(rows.slice(fh.idx + 1));
+  const itemCodes = itemRows.map(r => txt(r[ix])).filter(Boolean);
+  const itemSet = new Map(); itemCodes.forEach(c => itemSet.set(norm(c), c));
+
+  const attrSeen = new Map();
+  attrCodes.filter(Boolean).forEach(c => {
+    const k = norm(c);
+    attrSeen.set(k, { code: c, n: (attrSeen.get(k)?.n || 0) + 1 });
+  });
+
+  const missing = [...itemSet].filter(([k]) => !attrSeen.has(k)).map(([, c]) => c);
+  const extra = [...attrSeen].filter(([k]) => !itemSet.has(k)).map(([, v]) => v.code);
+  const dupes = [...attrSeen.values()].filter(v => v.n > 1);
+  // Rows with no code at all are not in either list, but they still make the
+  // totals disagree, so they have to be counted or the arithmetic looks wrong.
+  const blankAttr = attrCodes.filter(c => !c).length;
+  const blankItems = itemRows.length - itemCodes.length;
+
+  return {
+    items: itemRows.length, attrs: attrCodes.length,
+    missing, extra, dupes, blankAttr, blankItems,
+    ok: !missing.length && !extra.length && !dupes.length && !blankAttr && !blankItems
+        && itemRows.length === attrCodes.length,
+  };
+}
+
+// The banner at the very top of the results. Every item in Items needs its
+// attributes, and every item attributed has to be a real item. The two sheets
+// are filled in separately and drift apart, so this is not a detail buried in
+// a card — if it is wrong, nothing below it is worth reading yet.
+function renderReconcile() {
+  const parsed = itemAttrBlocks();
+  if (!parsed) return `<div class="note bad" style="margin:0 0 16px">
+    <b>No Item Attributes sheet.</b> There is nothing to check the Items sheet against.</div>`;
+
+  // Refuse to answer rather than answer wrongly. If the item-code column in a
+  // block could not be identified, every code there reads as blank and the
+  // comparison would invent a mismatch out of nothing.
+  if (parsed.unreadable.length) {
+    const b = parsed.unreadable[0];
+    const names = b.noHeader ? '' :
+      `<div class="tags" style="margin-top:8px">${b.header.filter(Boolean).slice(0, 25).map(h => `<span class="tag">${esc(h)}</span>`).join('')}</div>`;
+    return `<div class="note bad" style="margin:0 0 16px">
+      <b>Cannot check Items against Item Attributes.</b>
+      ${parsed.unreadable.length === 1 ? 'A block in' : parsed.unreadable.length + ' blocks in'} the Item Attributes sheet
+      ${parsed.unreadable.length === 1 ? 'has' : 'have'} no column this tool recognises as the item code
+      ${b.noHeader ? `&mdash; the block starting at row ${b.row + 1} has no header row at all.`
+                   : `&mdash; the block starting at row ${b.row + 1} is headed:`}
+      ${names}
+      <div class="muted" style="font-size:12.5px;margin-top:8px">
+        It is called <b>Item Code</b>, <b>SKU</b>, <b>Item Number</b> or <b>UTC Code</b> in the files seen so far.
+        Rather than compare a column it could not find and report a mismatch that is not real,
+        this check has been skipped. Rename the column, or send this file over and the name can be added.
+      </div></div>`;
+  }
+
+  const codes = parsed.all.map(r => r.item);
+  return reconcileNote(reconcileItems(codes), codes.length);
+}
+
+function reconcileNote(r, attrCount) {
+  if (r.noItems) return `<div class="note bad" style="margin:0 0 16px"><b>No Items sheet to compare against.</b>
+    The ${attrCount} attributed items could not be checked against the item list.</div>`;
+  if (r.noCodeCol) return `<div class="note warn" style="margin:0 0 16px"><b>No item-code column found in Items</b>,
+    so the two sheets could not be compared.</div>`;
+  if (r.ok) return `<div class="note ok" style="margin:0 0 16px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.2 2.6 2.6 5-5.4"/></svg>
+    <div><b>Items and Item Attributes match.</b>
+      All ${r.items} item${r.items === 1 ? '' : 's'} in the Items sheet ${r.items === 1 ? 'has' : 'have'}
+      attributes, and every attributed item is in the Items sheet.</div></div>`;
+
+  const block = (ttl, codes, why) => !codes.length ? '' : `
+    <div style="margin-top:10px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b style="color:var(--bad)">${codes.length} ${ttl}</b>
+        <button class="btn copy" data-codes="${esc(codes.join('|'))}">copy ${codes.length} item code${codes.length === 1 ? '' : 's'}</button>
+      </div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${why}</div>
+      <div class="tags" style="margin-top:6px">${codes.slice(0, 60).map(c => `<span class="tag">${esc(c)}</span>`).join('')}
+        ${codes.length > 60 ? `<span class="tag off">+${codes.length - 60} more &mdash; use copy</span>` : ''}</div>
+    </div>`;
+
+  return `<div class="note bad" style="margin:0 0 16px">
+    <b>Items and Item Attributes do not match.</b>
+    The Items sheet has <b style="color:var(--bad)">${r.items}</b> item${r.items === 1 ? '' : 's'};
+    Item Attributes has <b style="color:var(--bad)">${r.attrs}</b> row${r.attrs === 1 ? '' : 's'}.
+    ${block('in Items with no attributes', r.missing, 'listed as items but never given attributes &mdash; they cannot go live without them')}
+    ${block('attributed but not in Items', r.extra, 'given attributes but not on the Items sheet &mdash; a typo in the code, or an item that was dropped')}
+    ${block('appearing more than once in Item Attributes', r.dupes.map(d => d.code), 'the same item code attributed on two or more rows')}
+    ${r.blankAttr ? `<div style="margin-top:10px"><b style="color:var(--bad)">${r.blankAttr} row${r.blankAttr === 1 ? '' : 's'} in Item Attributes ${r.blankAttr === 1 ? 'has' : 'have'} no item code</b>
+      <div class="muted" style="font-size:12.5px">so ${r.blankAttr === 1 ? 'it cannot be matched' : 'they cannot be matched'} to anything</div></div>` : ''}
+    ${r.blankItems ? `<div style="margin-top:10px"><b style="color:var(--bad)">${r.blankItems} row${r.blankItems === 1 ? '' : 's'} in Items ${r.blankItems === 1 ? 'has' : 'have'} no item number</b></div>` : ''}
+  </div>`;
 }
 
 function checkItems() {
@@ -680,14 +945,19 @@ function checkItems() {
     MANDATORY = new Set(saved ? JSON.parse(saved) : DEFAULT_MANDATORY);
   }
 
-  const picker = cols.map(c =>
-    `<label><input type="checkbox" data-col="${esc(c.hd)}" ${MANDATORY.has(c.hd) ? 'checked' : ''}>${esc(c.hd)}</label>`).join('');
+  // The mandatory list is spelled the template's way; the workbook spells its
+  // own. Matched the way the conformance diff matches, or a column sitting in
+  // front of you gets reported as "not in this workbook".
+  const wanted = (hd) => [...MANDATORY].some(m => colKey(m) === colKey(hd));
 
-  const want = cols.filter(c => MANDATORY.has(c.hd));
+  const picker = cols.map(c =>
+    `<label><input type="checkbox" data-col="${esc(c.hd)}" ${wanted(c.hd) ? 'checked' : ''}>${esc(c.hd)}</label>`).join('');
+
+  const want = cols.filter(c => wanted(c.hd));
   // A column on the mandatory list that the workbook does not have cannot be
   // checked. Saying nothing would let "all filled" stand for a file that is
   // missing the column entirely, which is the worse of the two problems.
-  const notHere = [...MANDATORY].filter(m => !cols.some(c => c.hd === m));
+  const notHere = [...MANDATORY].filter(m => !cols.some(c => colKey(c.hd) === colKey(m)));
   const idIdx = (cols.find(c => /^item number$/i.test(c.hd)) || cols[1] || cols[0] || {}).i;
   const gaps = {};
   let badRows = 0;
@@ -775,6 +1045,7 @@ function tplState(name) {
 function run() {
   if (!TPL || !SUB) return;
   $('out').innerHTML =
+    renderReconcile() +
     renderConformance() + checkCategories() + checkAttributeTypes() +
     checkAttributeValues() + checkItemAttributes() + checkItems();
 
@@ -782,7 +1053,11 @@ function run() {
   if (picker) {
     picker.addEventListener('change', (e) => {
       const c = e.target.dataset.col; if (!c) return;
-      e.target.checked ? MANDATORY.add(c) : MANDATORY.delete(c);
+      // The saved entry may be spelled the template's way while the checkbox is
+      // labelled the workbook's way, so unticking has to clear the match, not
+      // the literal string — otherwise the box springs straight back.
+      if (e.target.checked) MANDATORY.add(c);
+      else [...MANDATORY].forEach(m => { if (colKey(m) === colKey(c)) MANDATORY.delete(m); });
       localStorage.setItem(LS, JSON.stringify([...MANDATORY]));
       run();
     });
