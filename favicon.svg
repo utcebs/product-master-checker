@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The mark from the page header, redrawn for a browser tab.
+       At 16px every pixel is a decision: the header version's inner text lines,
+       its gold border ring and its thin circled tick all merged into one blob.
+       What survives is a big document outline and a bold tick, separated by a
+       dark knockout so the two shapes never touch. -->
+  <rect width="64" height="64" rx="14" fill="#17181d"/>
+  <g fill="none" stroke="#f5c542" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- document, open at the bottom-right where the tick sits -->
+    <path d="M33 11H15.5a3.5 3.5 0 0 0-3.5 3.5v31a3.5 3.5 0 0 0 3.5 3.5H24"/>
+    <path d="M33 11v11.5h11.5"/>
+    <path d="M44.5 22.5v8"/>
+  </g>
+  <!-- dark knockout so the tick reads as its own shape, not part of the page -->
+  <path d="M44 28a16 16 0 1 1 0 32 16 16 0 0 1 0-32Z" fill="#17181d"/>
+  <path d="m35.5 44.5 6 6 11.5-13" fill="none" stroke="#f5c542" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
