@@ -7,7 +7,13 @@ Everything happens in the page. No upload, no server, no internet — the Excel
 library is a file in this repo, and a workbook never leaves the machine it is
 opened on.
 
-## Running it
+## Hosted
+
+Once GitHub Pages is switched on, the tool lives at
+<https://utcebs.github.io/product-master-checker/> and needs nothing installed.
+A workbook still never leaves the browser.
+
+## Running it locally
 
 ```
 node serve.mjs
@@ -89,7 +95,7 @@ template should really carry both.
 ## Files
 
 ```
-validator.html            the whole tool
+index.html                the whole tool
 lib/xlsx.full.min.js      SheetJS, vendored so it works with no internet
 serve.mjs                 a ~20 line static server, only so the page can read the template
 Product Master Template.xlsx
