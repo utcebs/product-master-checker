@@ -20,23 +20,14 @@
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
-  header{background:#000;border-bottom:1px solid var(--gold-dim);padding:18px 26px}
-  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--gold)}
-  header p{margin:5px 0 0;color:var(--muted);font-size:12.5px}
-  .wrap{max-width:1180px;margin:0 auto;padding:22px 26px 80px}
   code{background:#000;border:1px solid var(--line);padding:1px 6px;border-radius:4px;font-size:12.5px;color:var(--gold)}
 
   .slot{background:var(--panel);border:1px dashed var(--line2);border-radius:10px;padding:16px}
   .slot.on{border-style:solid;border-color:var(--gold-dim)}
   .slot h3{margin:0 0 3px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
   .slot .f{font-size:13px;color:var(--muted2);word-break:break-all}
-  .slot.on .f{color:var(--ink);font-weight:600}
-  .big-slot{margin-bottom:12px}
   input[type=file]{margin-top:9px;font-size:12.5px;width:100%;color:var(--muted)}
 
-  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:20px}
-  details summary{cursor:pointer;font-size:12.5px;color:var(--muted);outline:none}
-  details[open] summary{margin-bottom:4px}
   #tplState.ok{color:var(--gold);font-weight:600}
   #tplState.bad{color:var(--bad);font-weight:600}
 
@@ -74,7 +65,6 @@
        padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer}
   .btn:hover{border-color:var(--gold-dim);color:var(--gold)}
   .tools{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
-  .empty{padding:50px 16px;text-align:center;color:var(--muted2)}
 
   /* attribute-header tags — click one, then use the left and right arrow keys */
   .tags{display:flex;flex-wrap:wrap;gap:5px}
@@ -87,28 +77,164 @@
   .tag.off{color:var(--muted2);border-style:dashed;background:transparent}
   .tag.sel{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
   .hint{font-size:11.5px;color:var(--muted2);margin-top:6px}
+
+  .note{display:flex;gap:11px;align-items:flex-start;border-radius:10px;padding:12px 14px;margin-top:16px;font-size:13.5px}
+  .note svg{width:19px;height:19px;flex:none;margin-top:1px}
+  .note.ok{background:rgba(126,201,126,.08);border:1px solid rgba(126,201,126,.3);color:var(--ok)}
+  .note.ok b{color:#a7e0a7}
+  .note.ok div{color:var(--muted)}
+  .note.warn{background:rgba(245,197,66,.07);border:1px solid rgba(245,197,66,.3);color:var(--muted);display:block}
+  .note.warn b{color:var(--gold)}
+  /* ── the page ─────────────────────────────────────────────────────────── */
+  body{
+    background:#0a0c11;
+    background-image:
+      linear-gradient(118deg, rgba(245,197,66,.055) 0 2px, transparent 2px 240px),
+      linear-gradient(118deg, rgba(245,197,66,.035) 0 1px, transparent 1px 420px),
+      radial-gradient(900px 420px at 80% -8%, rgba(245,197,66,.06), transparent 60%);
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 26px 80px}
+
+  /* ── header ───────────────────────────────────────────────────────────── */
+  header{
+    background:none;border:0;padding:0;margin-bottom:22px;
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  }
+  .brandmark{
+    width:52px;height:52px;border-radius:13px;flex:none;
+    background:linear-gradient(160deg,#1d2029,#14171e);
+    border:1px solid rgba(245,197,66,.45);color:var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 8px 26px -12px rgba(245,197,66,.5);
+  }
+  .brandmark svg{width:26px;height:26px}
+  .brandtext{min-width:0}
+  .brandtext h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;color:#fff}
+  .brandtext h1 span{color:var(--gold)}
+  .brandtext p{margin:3px 0 0;color:var(--muted);font-size:13.5px}
+  .localbadge{
+    margin-left:auto;display:flex;align-items:center;gap:11px;
+    border:1px solid rgba(245,197,66,.3);border-radius:11px;padding:10px 15px;
+    background:rgba(245,197,66,.045);
+  }
+  .localbadge svg{width:21px;height:21px;color:var(--gold);flex:none}
+  .localbadge b{display:block;font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--gold)}
+  .localbadge span{display:block;font-size:12px;color:var(--muted)}
+
+  /* ── the drop zone ────────────────────────────────────────────────────── */
+  .dropzone{
+    display:flex;align-items:center;justify-content:center;gap:44px;
+    border:2px dashed rgba(245,197,66,.55);border-radius:16px;
+    padding:40px 32px;margin-bottom:16px;cursor:pointer;
+    background:radial-gradient(620px 220px at 50% 0%, rgba(245,197,66,.05), transparent 70%);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover,.dropzone.over{border-color:var(--gold);background:rgba(245,197,66,.07)}
+  .dropzone input[type=file]{display:none}
+  .dz-icon{
+    width:118px;height:118px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--gold);border:1px solid rgba(245,197,66,.3);
+    background:radial-gradient(circle at 50% 50%, rgba(245,197,66,.12), transparent 70%);
+    box-shadow:0 0 44px -14px rgba(245,197,66,.55);
+  }
+  .dz-icon svg{width:52px;height:52px}
+  .dz-text{text-align:center;padding-left:44px;border-left:1px solid var(--line);min-width:330px}
+  .dz-text .t1{font-size:19px;font-weight:700;color:#fff;letter-spacing:-.01em}
+  .t-or{display:flex;align-items:center;gap:12px;justify-content:center;margin:12px 0 14px}
+  .t-or i{height:1px;width:72px;background:var(--line2);display:block}
+  .t-or span{color:var(--muted);font-size:13px}
+  .choose{
+    display:inline-flex;align-items:center;gap:9px;
+    background:linear-gradient(180deg,#f7cf59,#e4b02c);color:#17140a;
+    font-weight:700;font-size:14.5px;padding:11px 26px;border-radius:9px;
+    box-shadow:0 10px 26px -12px rgba(245,197,66,.8);
+  }
+  .choose svg{width:17px;height:17px}
+  .dropzone:hover .choose{filter:brightness(1.06)}
+  .dz-text .t2{margin-top:14px;font-size:13px;color:var(--muted)}
+  .dz-text .t3{margin-top:3px;font-size:12.5px;color:var(--muted2)}
+  .dropzone.has .t2{color:var(--gold);font-weight:600}
+
+  /* ── master template strip ────────────────────────────────────────────── */
+  details{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:0;margin-bottom:20px;
+  }
+  details summary{
+    cursor:pointer;list-style:none;display:flex;align-items:center;gap:11px;
+    padding:15px 18px;font-size:14px;color:var(--ink);outline:none;
+  }
+  details summary::-webkit-details-marker{display:none}
+  details summary .sico{width:20px;height:20px;color:var(--muted);flex:none}
+  details summary .lbl{color:var(--muted)}
+  details summary #tplState{color:var(--gold);font-weight:600}
+  details summary em{font-style:normal;color:var(--muted2);font-size:13px}
+  details summary .chev{width:18px;height:18px;margin-left:auto;color:var(--muted);transition:transform .15s ease}
+  details[open] summary .chev{transform:rotate(180deg)}
+  details .slot{margin:0 18px 18px}
+
+  /* ── the empty state ──────────────────────────────────────────────────── */
+  .ready{text-align:center;padding:40px 20px 56px}
+  .ready-art{width:188px;margin:0 auto 22px;filter:drop-shadow(0 22px 44px rgba(245,197,66,.18))}
+  .ready-art svg{width:100%;height:auto}
+  .ready h2{margin:0;font-size:24px;font-weight:700;color:#fff;letter-spacing:-.02em}
+  .ready p{margin:9px 0 0;color:var(--muted);font-size:14px}
+  .ready-foot{display:flex;align-items:center;justify-content:center;gap:11px;margin-top:26px;color:var(--muted2)}
+  .ready-foot i{height:1px;width:74px;background:var(--line);display:block}
+  .ready-foot svg{width:16px;height:16px}
+  .ready-foot span{font-size:12.5px}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Product Master Checker</h1>
-  <p>Drop a returned workbook. Nothing is uploaded &mdash; the whole check runs in this page.</p>
-</header>
-
 <div class="wrap">
 
-  <div class="slot big-slot" id="slotS">
-    <h3>Returned workbook</h3>
-    <div class="f" id="nameS">choose the file a category manager sent back</div>
+  <header>
+    <div class="brandmark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7"/><path d="M14 3v5h5V8"/>
+        <path d="M8.5 12H13M8.5 15.5h3"/><circle cx="17.5" cy="17.5" r="3.6"/><path d="m15.9 17.6 1.2 1.2 2.1-2.3"/>
+      </svg>
+    </div>
+    <div class="brandtext">
+      <h1>Product Master <span>Checker</span></h1>
+      <p>Drop a workbook. Nothing is uploaded &mdash; the whole check runs in this page.</p>
+    </div>
+    <div class="localbadge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+      <div><b>Local Processing</b><span>Files stay on this device.</span></div>
+    </div>
+  </header>
+
+  <label class="dropzone" id="slotS">
+    <div class="dz-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 18.5a4.2 4.2 0 0 1-.5-8.4A6.2 6.2 0 0 1 18.2 9a3.8 3.8 0 0 1-.4 9.5"/><path d="M12 20.5v-8M9 15l3-3 3 3"/></svg>
+    </div>
+    <div class="dz-text">
+      <div class="t1">Drag and drop your workbook</div>
+      <div class="t-or"><i></i><span>or</span><i></i></div>
+      <span class="choose">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 0 1 2-2h3.6l1.7 1.8H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+        Browse files
+      </span>
+      <div class="t2" id="chipName">Choose the file a category manager sent back</div>
+      <div class="t3" id="chipSize">Supported format: .xlsx, .xls</div>
+    </div>
     <input type="file" id="fileS" accept=".xlsx,.xlsm,.xls">
-  </div>
+  </label>
 
   <!-- The template almost never changes, so it is loaded from beside this file
        and kept out of the way. It is only here for the day it does change. -->
   <details id="tplBox">
-    <summary><span id="tplState">Master template</span> &mdash; settings</summary>
-    <div class="slot" id="slotT" style="margin-top:10px">
+    <summary>
+      <svg class="sico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+      <span class="lbl">Master template:</span>
+      <span id="tplState">Product Master Template.xlsx</span>
+      <em>&mdash; settings</em>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
+    <div class="slot" id="slotT">
       <div class="f" id="nameT">Product Master Template.xlsx (loaded automatically)</div>
       <input type="file" id="fileT" accept=".xlsx,.xlsm,.xls">
       <div class="muted" style="font-size:12px;margin-top:8px">
@@ -119,7 +245,36 @@
     </div>
   </details>
 
-  <div id="out"><div class="empty">Choose a returned workbook to run the check.</div></div>
+<div id="out">
+  <div class="ready">
+    <div class="ready-art">
+      <svg viewBox="0 0 160 150" fill="none">
+        <defs>
+          <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2b3140"/><stop offset="1" stop-color="#1b2029"/>
+          </linearGradient>
+        </defs>
+        <path d="M34 18h62l24 24v86a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6Z" fill="url(#pg)" stroke="#3b4150"/>
+        <path d="M96 18v24h24" fill="#363c49" stroke="#464d5d"/>
+        <rect x="42" y="52" width="66" height="8" rx="2" fill="#f5c542" opacity=".85"/>
+        <g stroke="#4a5162">
+          <rect x="42" y="66" width="66" height="46" rx="2" fill="#141821"/>
+          <path d="M42 80h66M42 94h66M64 66v46M86 66v46"/>
+        </g>
+        <circle cx="116" cy="112" r="20" fill="#121620" stroke="#f5c542" stroke-width="3"/>
+        <path d="m108 112 6 6 11-12" stroke="#f5c542" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2>Ready to validate your workbook?</h2>
+    <p>Choose a workbook above to compare its structure against the master template.</p>
+    <div class="ready-foot">
+      <i></i>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>Your workbook stays on this device.</span>
+      <i></i>
+    </div>
+  </div>
+</div>
 </div>
 
 <script>
@@ -135,6 +290,31 @@ const SKIP_COLUMNS = ['New'];
 // Headers that mean the same thing. The template says "Category/Last Level"
 // where a returned sheet often just says "Category".
 const SAME_AS = [['category', 'category/last level']];
+
+// The Items columns that must be filled unless somebody says otherwise. Both
+// spellings of the extended-warranty column are here because the template
+// carries both, and a returned file may use either. Anything in this list that
+// the file does not have is simply not checked.
+const DEFAULT_MANDATORY = [
+  'Item number',
+  'Applicable for Ecom',
+  'Extended warranty Applicable Y/N',
+  'Extended warranty applicable (Y/N)',
+  'Warranty Terms',
+  'Pick & Collect',
+  'Click and Collect',
+  'Installation',
+  'Whats in The Box',
+  'Whats in the Box(English)',
+  'Whats in the Box(Arabic)',
+  'Warranty',
+  'Warranty(English)',
+  'Warranty(Arabic)',
+  'Return(English)',
+  'Return(Arabic)',
+  'Support(English)',
+  'Support(Arabic)',
+];
 
 // ───────────────────────────── helpers ─────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -180,7 +360,9 @@ const colIndex = (header, re) => header.findIndex(h => re.test(txt(h)));
 
 // ───────────────────────────── state ─────────────────────────────
 let TPL = null, SUB = null, MANDATORY = null;
-const LS = 'pmchecker.mandatory';
+// Bumped when the default list changes, so a saved selection from before
+// does not quietly override the new defaults for everyone who has used the tool.
+const LS = 'pmchecker.mandatory.v2';
 
 // ───────────────────────────── template conformance ─────────────────────────────
 function headerDiff(tHeader, sHeader) {
@@ -206,13 +388,17 @@ function headerDiff(tHeader, sHeader) {
     const next = common[k + 1];
     return next && sn.indexOf(key(h)) > sn.indexOf(key(next));
   });
+  // A column the file "lacks" while holding one spelled almost the same is not
+  // a missing column — it is the same column typed differently, and calling it
+  // missing sends somebody hunting for a column they are looking straight at.
+  // (The template itself carries both "Extended warranty Applicable Y/N" and
+  // "Extended warranty applicable (Y/N)", which is how this arises.)
   const loose = (x) => key(x).replace(/[^a-z0-9]/g, '');
-  const twin = {};
-  missing.forEach(m => {
-    const hit = s.find(x => loose(x) === loose(m) && key(x) !== key(m));
-    if (hit) twin[m] = hit;
-  });
-  return { missing, added, spacing, dupes, orderChanged, twin, tCount: t.length, sCount: s.length };
+  for (let i = missing.length - 1; i >= 0; i--) {
+    const hit = s.find(x => loose(x) === loose(missing[i]) && key(x) !== key(missing[i]));
+    if (hit) { spacing.push([missing[i], hit]); missing.splice(i, 1); }
+  }
+  return { missing, added, spacing, dupes, orderChanged, tCount: t.length, sCount: s.length };
 }
 
 function renderConformance() {
@@ -241,11 +427,9 @@ function renderConformance() {
 
     let detail = '';
     if (found.idx) detail += `<div class="line"><span class="tilde">~</span><div>header is on <b>row ${found.idx + 1}</b>, not row 1</div></div>`;
-    d.missing.forEach(h => detail += `<div class="line"><span class="minus">&minus;</span><div>missing: <code>${esc(h)}</code>${
-      d.twin[h] ? `<div class="hint">the template has two columns with nearly this name; the file has <code>${esc(d.twin[h])}</code> but not this one</div>` : ''
-    }</div></div>`);
+    d.missing.forEach(h => detail += `<div class="line"><span class="minus">&minus;</span><div>missing: <code>${esc(h)}</code></div></div>`);
     d.added.forEach(h => detail += `<div class="line"><span class="plus">+</span><div>added: <code>${esc(h)}</code></div></div>`);
-    d.spacing.forEach(([a, b]) => detail += `<div class="line"><span class="tilde">~</span><div>spelling only: <code>${esc(a)}</code> &rarr; <code>${esc(b)}</code></div></div>`);
+    d.spacing.forEach(([a, b]) => detail += `<div class="line"><span class="tilde">~</span><div>spelt differently &mdash; same column: template says <code>${esc(a)}</code>, the file says <code>${esc(b)}</code></div></div>`);
     d.dupes.forEach(h => detail += `<div class="line"><span class="minus">!</span><div>column name used twice: <code>${esc(h)}</code></div></div>`);
     if (d.orderChanged) detail += `<div class="line"><span class="tilde">~</span><div>columns are in a different order</div></div>`;
     if (!detail) detail = '<span class="pill yes">matches the template</span>';
@@ -374,10 +558,43 @@ function checkAttributeValues() {
   const rows = sheetRows(SUB, 'Attribute Values');
   if (!rows.length) return card('Attribute Values', '<span class="pill err">sheet missing</span>', '');
   const fh = findHeader(rows, sheetRows(TPL, 'Attribute Values')[0]);
-  const data = realRows(rows.slice(fh.idx + 1));
+  const all = realRows(rows.slice(fh.idx + 1));
+
+  // Like Item Attributes, this sheet is a run of blocks. Each one opens with a
+  // title row whose first cell is empty ("| Category | Hair Clipper") followed
+  // immediately by that block's header ("| Features | Value"). Neither is an
+  // attribute value, and counting them adds two per block — twenty in one real
+  // file. They are found by position rather than by wording, because the
+  // wording differs from the template's.
+  const structural = new Set();
+  for (let i = fh.idx; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r.some(c => txt(c) !== '')) continue;
+    if (txt(r[0]) === '' && txt(r[1]) !== '') {
+      structural.add(i);
+      for (let j = i + 1; j < rows.length; j++) {          // the header right after it
+        if (!rows[j].some(c => txt(c) !== '')) continue;
+        structural.add(j); break;
+      }
+    }
+  }
+  const data = [];
+  for (let i = fh.idx + 1; i < rows.length; i++) {
+    if (structural.has(i)) continue;
+    if (rows[i].some(c => txt(c) !== '')) data.push(rows[i]);
+  }
+  const headersSkipped = all.length - data.length;
+
+  const dupes = data.length - new Set(data.map(r => r.map(norm).join('\u0001'))).size;
+
   return card('Attribute Values', `<span class="n">${data.length}</span>`,
     headerNote(fh, 'Attribute Values') +
-    `<div class="muted">attribute values requiring translation</div>`);
+    `<div class="muted">attribute values requiring translation</div>
+     ${headersSkipped || dupes ? `<div class="hint">
+       ${headersSkipped ? `${headersSkipped} block title and header row${headersSkipped > 1 ? 's' : ''} not counted as values` : ''}
+       ${headersSkipped && dupes ? ' &middot; ' : ''}
+       ${dupes ? `${dupes} row${dupes > 1 ? 's are' : ' is'} an exact repeat of another (still counted &mdash; say if they should not be)` : ''}
+     </div>` : ''}`);
 }
 
 function checkItemAttributes() {
@@ -456,14 +673,17 @@ function checkItems() {
 
   if (!MANDATORY) {
     const saved = localStorage.getItem(LS);
-    MANDATORY = new Set(saved ? JSON.parse(saved)
-      : ['Item number', 'Product name', 'Product Description', 'item group', 'Category', 'Brand', 'Sales price', 'Applicable for Ecom']);
+    MANDATORY = new Set(saved ? JSON.parse(saved) : DEFAULT_MANDATORY);
   }
 
   const picker = cols.map(c =>
     `<label><input type="checkbox" data-col="${esc(c.hd)}" ${MANDATORY.has(c.hd) ? 'checked' : ''}>${esc(c.hd)}</label>`).join('');
 
   const want = cols.filter(c => MANDATORY.has(c.hd));
+  // A column on the mandatory list that the workbook does not have cannot be
+  // checked. Saying nothing would let "all filled" stand for a file that is
+  // missing the column entirely, which is the worse of the two problems.
+  const notHere = [...MANDATORY].filter(m => !cols.some(c => c.hd === m));
   const idIdx = (cols.find(c => /^item number$/i.test(c.hd)) || cols[1] || cols[0] || {}).i;
   const gaps = {};
   let badRows = 0;
@@ -499,6 +719,17 @@ function checkItems() {
        <span class="muted" style="font-size:12px">remembered on this machine</span>
      </div>
      <div class="cols" id="mPicker">${picker}</div>
+     ${notHere.length ? `
+       <div class="note warn">
+         <b>${notHere.length} of the columns you marked mandatory ${notHere.length === 1 ? 'is' : 'are'} not in this workbook</b>, so ${notHere.length === 1 ? 'it was' : 'they were'} not checked:
+         <div class="tags" style="margin-top:7px">${notHere.map(c => `<span class="tag off">${esc(c)}</span>`).join('')}</div>
+       </div>` : ''}
+     ${!badRows ? `
+       <div class="note ok">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.2 2.6 2.6 5-5.4"/></svg>
+         <div><b>Every mandatory column is filled.</b>
+           All ${want.length} checked column${want.length === 1 ? '' : 's'} ${want.length === 1 ? 'has' : 'have'} a value in all ${data.length} row${data.length === 1 ? '' : 's'}.</div>
+       </div>` : ''}
      ${badRows ? `
        <div class="muted" style="margin:18px 0 6px"><b>Which columns are blank, and how often</b></div>
        <table><thead><tr><th style="width:300px">Column</th><th style="width:80px">Blank in</th><th style="width:70px">of rows</th><th></th></tr></thead><tbody>${gapList}</tbody></table>
@@ -587,11 +818,34 @@ function load(file, which) {
   r.onload = (e) => {
     const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
     if (which === 't') { TPL = wb; $('nameT').textContent = file.name; $('slotT').classList.add('on'); tplState(file.name + ' (this session only)'); }
-    else { SUB = wb; $('nameS').textContent = file.name; $('slotS').classList.add('on'); }
+    else { SUB = wb; showPicked(file.name, file.size); }
     run();
   };
   r.readAsArrayBuffer(file);
 }
+
+function showPicked(name, bytes) {
+  const z = $('slotS');
+  z.classList.add('has');
+  $('chipName').textContent = name;
+  $('chipSize').textContent = bytes ? (bytes / 1048576).toFixed(1) + ' MB · XLSX' : 'XLSX';
+}
+
+// dropping a file anywhere on the zone is the same as choosing one
+(function () {
+  const z = $('slotS');
+  ['dragenter', 'dragover'].forEach(e => z.addEventListener(e, (ev) => {
+    ev.preventDefault(); z.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach(e => z.addEventListener(e, (ev) => {
+    ev.preventDefault(); if (e === 'dragleave' && z.contains(ev.relatedTarget)) return;
+    z.classList.remove('over');
+  }));
+  z.addEventListener('drop', (ev) => {
+    const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if (f) load(f, 's');
+  });
+})();
 
 $('fileT').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 't'));
 $('fileS').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 's'));
@@ -603,7 +857,7 @@ function beside(name, which) {
     .then(b => {
       const wb = XLSX.read(new Uint8Array(b), { type: 'array' });
       if (which === 't') { TPL = wb; $('slotT').classList.add('on'); tplState(name); }
-      else { SUB = wb; $('nameS').textContent = name; $('slotS').classList.add('on'); }
+      else { SUB = wb; showPicked(name, b.byteLength); }
       run();
     }).catch(() => {});
 }
