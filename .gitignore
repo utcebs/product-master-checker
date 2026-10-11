@@ -1,0 +1,9 @@
+# Real submissions from category managers — these are live product data and
+# have no business in a repo. Drop one in the folder and the tool will read it;
+# it just never gets committed.
+Type of file that are sent to us.xlsx
+*.submitted.xlsx
+
+# scratch
+*.bak
+node_modules/

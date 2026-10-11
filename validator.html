@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Master Checker</title>
+<!--
+  Checks a category manager's returned workbook against the Product Master Template.
+
+  Everything happens in this page. No upload, no server, no internet: the Excel
+  library is the file next to this one. A workbook never leaves the machine.
+-->
+<script src="lib/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#0e0e0c; --panel:#171714; --panel2:#1e1e1a; --line:#2c2c26; --line2:#3a3a32;
+    --ink:#f2efe6; --muted:#9a968a; --muted2:#6f6c63;
+    --gold:#f5c542; --gold-dim:#8a7024; --ok:#7ec97e; --bad:#ef6a52; --warn:#f5c542;
+    --font:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  header{background:#000;border-bottom:1px solid var(--gold-dim);padding:18px 26px}
+  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--gold)}
+  header p{margin:5px 0 0;color:var(--muted);font-size:12.5px}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 26px 80px}
+  code{background:#000;border:1px solid var(--line);padding:1px 6px;border-radius:4px;font-size:12.5px;color:var(--gold)}
+
+  .slot{background:var(--panel);border:1px dashed var(--line2);border-radius:10px;padding:16px}
+  .slot.on{border-style:solid;border-color:var(--gold-dim)}
+  .slot h3{margin:0 0 3px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+  .slot .f{font-size:13px;color:var(--muted2);word-break:break-all}
+  .slot.on .f{color:var(--ink);font-weight:600}
+  .big-slot{margin-bottom:12px}
+  input[type=file]{margin-top:9px;font-size:12.5px;width:100%;color:var(--muted)}
+
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:20px}
+  details summary{cursor:pointer;font-size:12.5px;color:var(--muted);outline:none}
+  details[open] summary{margin-bottom:4px}
+  #tplState.ok{color:var(--gold);font-weight:600}
+  #tplState.bad{color:var(--bad);font-weight:600}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;overflow:hidden}
+  .card > h2{
+    margin:0;padding:12px 16px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+    background:#000;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;
+  }
+  .card > h2 .n{margin-left:auto;font-size:19px;font-weight:700;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
+  .body{padding:14px 16px}
+  .muted{color:var(--muted)}
+
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:600;
+     position:sticky;top:0;background:#000}
+  tbody tr:hover{background:var(--panel2)}
+  .scroll{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+  .yes{background:#1c2e1c;color:var(--ok);border:1px solid #2f4a2f}
+  .no{background:#212120;color:var(--muted2);border:1px solid var(--line2)}
+  .err{background:#331a15;color:var(--bad);border:1px solid #5a2a20}
+  .wrn{background:#332a12;color:var(--warn);border:1px solid #5a4a1c}
+
+  .line{display:flex;gap:9px;padding:3px 0;align-items:flex-start}
+  .plus{color:var(--ok);font-weight:700}
+  .minus{color:var(--bad);font-weight:700}
+  .tilde{color:var(--warn);font-weight:700}
+
+  .cols{columns:3;column-gap:22px}
+  .cols label{display:block;break-inside:avoid;font-size:12.5px;padding:2px 0;cursor:pointer;color:var(--ink)}
+  .cols input{margin-right:6px;accent-color:var(--gold)}
+  .btn{border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:7px;
+       padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+  .btn:hover{border-color:var(--gold-dim);color:var(--gold)}
+  .tools{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+  .empty{padding:50px 16px;text-align:center;color:var(--muted2)}
+
+  /* attribute-header tags — click one, then use the left and right arrow keys */
+  .tags{display:flex;flex-wrap:wrap;gap:5px}
+  .tag{
+    display:inline-block;padding:2px 9px;border:1px solid var(--line2);border-radius:6px;
+    background:var(--panel2);color:var(--ink);font-size:12px;line-height:1.5;white-space:nowrap;
+    cursor:pointer;outline:none;
+  }
+  .tag:hover{border-color:var(--gold-dim)}
+  .tag.off{color:var(--muted2);border-style:dashed;background:transparent}
+  .tag.sel{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
+  .hint{font-size:11.5px;color:var(--muted2);margin-top:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Product Master Checker</h1>
+  <p>Drop a returned workbook. Nothing is uploaded &mdash; the whole check runs in this page.</p>
+</header>
+
+<div class="wrap">
+
+  <div class="slot big-slot" id="slotS">
+    <h3>Returned workbook</h3>
+    <div class="f" id="nameS">choose the file a category manager sent back</div>
+    <input type="file" id="fileS" accept=".xlsx,.xlsm,.xls">
+  </div>
+
+  <!-- The template almost never changes, so it is loaded from beside this file
+       and kept out of the way. It is only here for the day it does change. -->
+  <details id="tplBox">
+    <summary><span id="tplState">Master template</span> &mdash; settings</summary>
+    <div class="slot" id="slotT" style="margin-top:10px">
+      <div class="f" id="nameT">Product Master Template.xlsx (loaded automatically)</div>
+      <input type="file" id="fileT" accept=".xlsx,.xlsm,.xls">
+      <div class="muted" style="font-size:12px;margin-top:8px">
+        Only change this when the template itself changes. Replace
+        <code>Product Master Template.xlsx</code> in this folder to make it permanent &mdash;
+        a file chosen here lasts until the page is reloaded.
+      </div>
+    </div>
+  </details>
+
+  <div id="out"><div class="empty">Choose a returned workbook to run the check.</div></div>
+</div>
+
+<script>
+// ───────────────────────────── settings ─────────────────────────────
+// Sheets nobody is checking, and columns that are housekeeping rather than
+// content. Both are compared loosely (case and spacing ignored).
+const SKIP_SHEETS = ['Price & Discount Agreements'];
+// Sheets that exist in both but whose COLUMNS are not the template's business:
+// the category team writes a different set of attribute headers per category,
+// and the template only ever showed one example of what that looks like.
+const HEADERS_NOT_COMPARED = ['Item Attributes'];
+const SKIP_COLUMNS = ['New'];
+// Headers that mean the same thing. The template says "Category/Last Level"
+// where a returned sheet often just says "Category".
+const SAME_AS = [['category', 'category/last level']];
+
+// ───────────────────────────── helpers ─────────────────────────────
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const txt = (v) => String(v == null ? '' : v).trim();
+// Excel leaves thousands of formatted-but-empty rows behind; "has data" means at
+// least one cell with something in it, which is the difference between 2 and 672.
+const realRows = (rows) => rows.filter(r => r.some(c => txt(c) !== ''));
+const norm = (s) => txt(s).toLowerCase().replace(/\s+/g, ' ');
+// one name for headers that mean the same thing, so they never read as a change
+const key = (s) => { const n = norm(s); const g = SAME_AS.find(a => a.includes(n)); return g ? g[0] : n; };
+const skipped = (h) => SKIP_COLUMNS.some(c => norm(c) === norm(h));
+const isYes = (v) => /^(y|yes)$/i.test(txt(v));
+
+function sheetRows(wb, name) {
+  const ws = wb && wb.Sheets[name];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+}
+
+// The header is not always row 1 — one returned file had a blank first row. Score
+// the first few rows against the template's header and take the best match, so a
+// shifted sheet is still read rather than silently reported as empty.
+function findHeader(rows, want) {
+  const target = (want || []).map(key).filter(Boolean);
+  let best = { idx: 0, score: -1 };
+  for (let i = 0; i < Math.min(6, rows.length); i++) {
+    const cells = rows[i].map(key).filter(Boolean);
+    if (!cells.length) continue;
+    const score = target.length ? cells.filter(c => target.includes(c)).length : cells.length;
+    if (score > best.score) best = { idx: i, score };
+  }
+  best.sure = target.length ? best.score >= Math.max(2, Math.ceil(target.length / 3)) : true;
+  return best;
+}
+function headerNote(found, sheet) {
+  if (found.sure && found.idx === 0) return '';
+  if (!found.sure) return '<div class="line"><span class="tilde">!</span><div><b>No recognisable header row</b> in ' +
+    esc(sheet) + ' &mdash; counting from row ' + (found.idx + 2) + '. If the sheet has no header at all the count may be out by one.</div></div>';
+  return '<div class="line"><span class="tilde">~</span><div>header found on row ' + (found.idx + 1) + ', not row 1</div></div>';
+}
+const colIndex = (header, re) => header.findIndex(h => re.test(txt(h)));
+
+// ───────────────────────────── state ─────────────────────────────
+let TPL = null, SUB = null, MANDATORY = null;
+const LS = 'pmchecker.mandatory';
+
+// ───────────────────────────── template conformance ─────────────────────────────
+function headerDiff(tHeader, sHeader) {
+  const t = tHeader.map(txt).filter(h => h && !skipped(h));
+  const s = sHeader.map(txt).filter(h => h && !skipped(h));
+  const tn = t.map(key), sn = s.map(key);
+
+  const missing = t.filter((h, i) => !sn.includes(tn[i]));
+  const added   = s.filter((h, i) => !tn.includes(sn[i]));
+
+  // "Installation " and "Installation" are not a removal plus an addition — they
+  // are the same column typed differently. Pair those off so the real list is short.
+  const spacing = [];
+  for (let i = missing.length - 1; i >= 0; i--) {
+    const loose = key(missing[i]).replace(/[^a-z0-9]/g, '');
+    const j = added.findIndex(a => key(a).replace(/[^a-z0-9]/g, '') === loose);
+    if (j >= 0) { spacing.push([missing[i], added[j]]); missing.splice(i, 1); added.splice(j, 1); }
+  }
+
+  const dupes = [...new Set(s.filter((x, i) => sn.indexOf(key(x)) !== i))];
+  const common = t.filter((h, i) => sn.includes(tn[i]));
+  const orderChanged = common.some((h, k) => {
+    const next = common[k + 1];
+    return next && sn.indexOf(key(h)) > sn.indexOf(key(next));
+  });
+  const loose = (x) => key(x).replace(/[^a-z0-9]/g, '');
+  const twin = {};
+  missing.forEach(m => {
+    const hit = s.find(x => loose(x) === loose(m) && key(x) !== key(m));
+    if (hit) twin[m] = hit;
+  });
+  return { missing, added, spacing, dupes, orderChanged, twin, tCount: t.length, sCount: s.length };
+}
+
+function renderConformance() {
+  const want = TPL.SheetNames.filter(n => !SKIP_SHEETS.includes(n));
+  const have = SUB.SheetNames;
+  let problems = 0, rows = '';
+
+  for (const name of want) {
+    if (!have.includes(name)) {
+      problems++;
+      rows += `<tr><td><b>${esc(name)}</b></td><td colspan="2"><span class="pill err">sheet missing</span></td></tr>`;
+      continue;
+    }
+    if (HEADERS_NOT_COMPARED.includes(name)) {
+      rows += `<tr><td><b>${esc(name)}</b></td><td><span class="pill yes">present</span></td>
+               <td class="muted">columns are not compared &mdash; the category team writes its own
+               attribute headers here, and the template only showed an example</td></tr>`;
+      continue;
+    }
+    const tr = sheetRows(TPL, name), sr = sheetRows(SUB, name);
+    const th = tr[findHeader(tr, null).idx] || [];
+    const found = findHeader(sr, th);
+    const d = headerDiff(th, sr[found.idx] || []);
+    const n = d.missing.length + d.added.length + d.dupes.length + (d.orderChanged ? 1 : 0) + (found.idx ? 1 : 0);
+    problems += n;
+
+    let detail = '';
+    if (found.idx) detail += `<div class="line"><span class="tilde">~</span><div>header is on <b>row ${found.idx + 1}</b>, not row 1</div></div>`;
+    d.missing.forEach(h => detail += `<div class="line"><span class="minus">&minus;</span><div>missing: <code>${esc(h)}</code>${
+      d.twin[h] ? `<div class="hint">the template has two columns with nearly this name; the file has <code>${esc(d.twin[h])}</code> but not this one</div>` : ''
+    }</div></div>`);
+    d.added.forEach(h => detail += `<div class="line"><span class="plus">+</span><div>added: <code>${esc(h)}</code></div></div>`);
+    d.spacing.forEach(([a, b]) => detail += `<div class="line"><span class="tilde">~</span><div>spelling only: <code>${esc(a)}</code> &rarr; <code>${esc(b)}</code></div></div>`);
+    d.dupes.forEach(h => detail += `<div class="line"><span class="minus">!</span><div>column name used twice: <code>${esc(h)}</code></div></div>`);
+    if (d.orderChanged) detail += `<div class="line"><span class="tilde">~</span><div>columns are in a different order</div></div>`;
+    if (!detail) detail = '<span class="pill yes">matches the template</span>';
+
+    rows += `<tr><td><b>${esc(name)}</b><div class="muted" style="font-size:12px">${d.tCount} &rarr; ${d.sCount} columns</div></td>
+             <td>${n ? `<span class="pill ${n > 2 ? 'err' : 'wrn'}">${n} difference${n > 1 ? 's' : ''}</span>` : '<span class="pill yes">ok</span>'}</td>
+             <td>${detail}</td></tr>`;
+  }
+  have.filter(n => !TPL.SheetNames.includes(n))
+    .forEach(n => rows += `<tr><td><b>${esc(n)}</b></td><td><span class="pill wrn">extra sheet</span></td><td>not in the template</td></tr>`);
+
+  return card('Template conformance',
+    problems ? `<span class="pill ${problems > 4 ? 'err' : 'wrn'}">${problems} to look at</span>` : '<span class="pill yes">clean</span>',
+    `<div class="muted" style="margin-bottom:10px">ignoring ${SKIP_SHEETS.map(s => `<code>${esc(s)}</code>`).join(', ')}
+       and the ${SKIP_COLUMNS.map(c => `<code>${esc(c)}</code>`).join(', ')} column</div>
+     <table><thead><tr><th style="width:190px">Sheet</th><th style="width:120px"></th><th>What changed</th></tr></thead><tbody>${rows}</tbody></table>`);
+}
+
+// ───────────────────────────── the sheet checks ─────────────────────────────
+function checkCategories() {
+  const rows = sheetRows(SUB, 'Category Hierarchy');
+  if (!rows.length) return card('Category Hierarchy', '<span class="pill err">sheet missing</span>', '');
+  const fh = findHeader(rows, sheetRows(TPL, 'Category Hierarchy')[0]);
+  const header = rows[fh.idx].map(txt);
+  const keepCols = header.map((h, i) => ({ h, i })).filter(c => c.h && !skipped(c.h));
+  const data = realRows(rows.slice(fh.idx + 1));
+
+  const list = data.slice(0, 500).map(r => {
+    const parts = keepCols.map(c => txt(r[c.i])).filter(Boolean);
+    return `<tr><td>${esc(parts[parts.length - 1] || '')}</td><td class="muted">${esc(parts.join(' › '))}</td></tr>`;
+  }).join('');
+
+  return card('Category Hierarchy', `<span class="n">${data.length}</span>`,
+    headerNote(fh, 'Category Hierarchy') +
+    `<div class="muted" style="margin-bottom:10px">categories to be ecom enabled &mdash; ${keepCols.length} levels</div>
+     <div class="scroll"><table><thead><tr><th style="width:230px">Category</th><th>Full path</th></tr></thead><tbody>${list}</tbody></table></div>`);
+}
+
+function checkAttributeTypes() {
+  const rows = sheetRows(SUB, 'Attribute Types');
+  if (!rows.length) return card('Attribute Types', '<span class="pill err">sheet missing</span>', '');
+  const fh = findHeader(rows, sheetRows(TPL, 'Attribute Types')[0]);
+  const header = rows[fh.idx].map(txt);
+
+  const fIdx = colIndex(header, /filter/i);
+  const kIdx = colIndex(header, /key\s*feature/i);
+  const tIdx = colIndex(header, /tech/i);
+  // The attribute-type name sits immediately left of Filterable. One returned file
+  // had that header overwritten with its own first value ("Brand"), so position is
+  // the reliable way in, not the header text.
+  const nIdx = fIdx > 0 ? fIdx - 1 : 1;
+
+  // A duplicate is: same attribute type name, same filterable, same key feature,
+  // same technical spec. The category it sits under plays no part — "Brand,
+  // filterable, key feature" repeated for ten sub-categories is ONE attribute
+  // type to set up, not ten.
+  const uniq = new Map();
+  let dropped = 0;
+  for (const r of realRows(rows.slice(fh.idx + 1))) {
+    const name = txt(r[nIdx]) || '(blank)';
+    const f = isYes(r[fIdx]), k = isYes(r[kIdx]), s = isYes(r[tIdx]);
+    const id = [norm(name), f, k, s].join('\u0001');
+    if (uniq.has(id)) { uniq.get(id).seen++; dropped++; continue; }
+    uniq.set(id, { name, f, k, s, seen: 1, where: new Set() });
+  }
+  // where each one is used, for the line underneath
+  for (const r of realRows(rows.slice(fh.idx + 1))) {
+    const id = [norm(txt(r[nIdx]) || '(blank)'), isYes(r[fIdx]), isYes(r[kIdx]), isYes(r[tIdx])].join('\u0001');
+    const w = txt(r[1]) || txt(r[0]);
+    if (uniq.has(id) && w) uniq.get(id).where.add(w);
+  }
+
+  const list = [...uniq.values()];
+  // the same name surviving twice means it was classified inconsistently
+  const byName = {};
+  list.forEach(t => byName[norm(t.name)] = (byName[norm(t.name)] || 0) + 1);
+
+  // count the NAMES set up more than one way, not the entries — three names
+  // with two settings each is three problems to resolve, not six.
+  const inconsistent = Object.values(byName).filter(v => v > 1).length;
+  // Put the ones set up more than one way at the top, with their variants
+  // adjacent, so the disagreement is read as one thing to settle rather than
+  // two unrelated lines pages apart.
+  list.sort((a, b) => {
+    const sa = byName[norm(a.name)] > 1, sb = byName[norm(b.name)] > 1;
+    if (sa !== sb) return sa ? -1 : 1;
+    return norm(a.name).localeCompare(norm(b.name));
+  });
+  let needDecision = 0, lastName = null;
+  const body = list.map(t => {
+    const bad = (t.k && t.s) || (!t.k && !t.s);
+    if (bad) needDecision++;
+    const split = byName[norm(t.name)] > 1;
+    const cls = (t.k && t.s) ? '<span class="pill err">both &mdash; pick one</span>'
+      : (!t.k && !t.s) ? '<span class="pill err">neither &mdash; pick one</span>'
+      : t.k ? '<span class="pill yes">Key feature</span>' : '<span class="pill yes">Tech spec</span>';
+    // the first of a set of variants opens the group; the rest are indented
+    // under it so the two settings read as one disagreement
+    const firstOfGroup = split && norm(t.name) !== lastName;
+    const continues = split && norm(t.name) === lastName;
+    lastName = norm(t.name);
+    const rowStyle = bad ? ' style="background:#2a1512"'
+      : split ? ' style="background:#211c10"' : '';
+    return `<tr${rowStyle}>
+      <td style="${split ? 'border-left:3px solid var(--gold)' : ''}">
+        ${continues ? '<span class="muted" style="margin-right:6px">&#8627;</span>' : ''}
+        <b>${esc(t.name)}</b>
+        ${firstOfGroup ? `<span class="pill wrn" style="margin-left:6px">set up ${byName[norm(t.name)]} different ways</span>` : ''}
+        ${t.seen > 1 ? `<div class="muted" style="font-size:11.5px">${t.seen} rows &middot; ${esc([...t.where].join(', ')).slice(0, 90)}</div>`
+                     : `<div class="muted" style="font-size:11.5px">${esc([...t.where].join(', ')).slice(0, 90)}</div>`}</td>
+      <td>${t.f ? '<span class="pill yes">Filterable</span>' : '<span class="pill no">no</span>'}</td>
+      <td>${cls}</td></tr>`;
+  }).join('');
+
+  return card('Attribute Types', `<span class="n">${list.length}</span>`,
+    headerNote(fh, 'Attribute Types') +
+    `<div class="muted" style="margin-bottom:10px">
+       <b>${list.length} attribute types to set up</b>
+       ${dropped ? `&middot; ${dropped} duplicate row${dropped > 1 ? 's' : ''} removed (same name, filterable and classification)` : ''}
+       ${needDecision ? `&middot; <b style="color:var(--bad)">${needDecision} need a decision</b>` : '&middot; all classified'}
+       ${inconsistent ? `&middot; <b style="color:var(--warn)">${inconsistent} set up inconsistently</b>` : ''}
+     </div>
+     <div class="scroll"><table><thead><tr><th style="width:340px">Attribute type</th><th style="width:130px">Filterable</th><th>Classified as</th></tr></thead><tbody>${body}</tbody></table></div>`);
+}
+function checkAttributeValues() {
+  const rows = sheetRows(SUB, 'Attribute Values');
+  if (!rows.length) return card('Attribute Values', '<span class="pill err">sheet missing</span>', '');
+  const fh = findHeader(rows, sheetRows(TPL, 'Attribute Values')[0]);
+  const data = realRows(rows.slice(fh.idx + 1));
+  return card('Attribute Values', `<span class="n">${data.length}</span>`,
+    headerNote(fh, 'Attribute Values') +
+    `<div class="muted">attribute values requiring translation</div>`);
+}
+
+function checkItemAttributes() {
+  const rows = sheetRows(SUB, 'Item Attributes');
+  if (!rows.length) return card('Item Attributes', '<span class="pill err">sheet missing</span>', '');
+
+  // This sheet is NOT one table. It is a run of blocks, one per product type,
+  // each with its OWN header row and its OWN attribute columns, separated by a
+  // blank row. Reading it as a single table takes the first block's header and
+  // applies it to everything, which is wrong for every block after the first.
+  const isHeaderRow = (c) => c.some(v => /^(sku|item\s*code|item\s*number)$/i.test(v));
+  const blocks = [];
+  let cur = null;
+  rows.forEach((r, i) => {
+    const c = r.map(txt);
+    if (!c.some(Boolean)) { cur = null; return; }
+    if (isHeaderRow(c)) { cur = { header: c, row: i, items: [] }; blocks.push(cur); return; }
+    if (cur) cur.items.push(c);
+    else { cur = { header: c.map((_, k) => 'Column ' + (k + 1)), row: i, items: [c], noHeader: true }; blocks.push(cur); }
+  });
+
+  const at = (h, re) => h.findIndex(x => re.test(x));
+  const ITEM = /^(item\s*code|sku|item\s*number)$/i, CAT = /^categor/i, PT = /^product\s*type$/i;
+
+  let all = [], incomplete = 0;
+  for (const b of blocks) {
+    const i = at(b.header, ITEM), c = at(b.header, CAT), p = at(b.header, PT);
+    for (const r of b.items) {
+      const row = { item: txt(r[i]), pt: txt(r[p]), cat: txt(r[c]) };
+      if (!row.item || !row.pt || !row.cat) incomplete++;
+      all.push(row);
+    }
+  }
+  const step1 = all.map(r => `<tr><td>${esc(r.item)}</td>
+      <td>${r.pt ? esc(r.pt) : '<span class="pill err">missing</span>'}</td>
+      <td>${r.cat ? esc(r.cat) : '<span class="pill err">missing</span>'}</td></tr>`).join('');
+
+  let tagN = 0;
+  const step2 = blocks.map((b) => {
+    const i = at(b.header, ITEM), c = at(b.header, CAT), p = at(b.header, PT);
+    const cats = [...new Set(b.items.map(r => txt(r[c])).filter(Boolean))];
+    const pts = [...new Set(b.items.map(r => txt(r[p])).filter(Boolean))];
+    const attrs = b.header.filter((hd, x) => hd && x !== i && x !== c && x !== p && !skipped(hd));
+    const used = new Set();
+    b.items.forEach(r => b.header.forEach((hd, x) => { if (hd && txt(r[x])) used.add(hd); }));
+    const tags = attrs.map(a =>
+      `<span class="tag${used.has(a) ? '' : ' off'}" tabindex="-1" data-tag="${tagN++}">${esc(a)}</span>`).join('');
+    const blank = attrs.filter(a => !used.has(a));
+    return `<tr>
+      <td><b>${esc(pts.join(' / ') || '(no product type)')}</b>
+          <div class="muted" style="font-size:12px">${esc(cats.join(' / ') || '(no category)')}</div>
+          <div class="muted" style="font-size:11.5px">${b.items.length} item${b.items.length > 1 ? 's' : ''} &middot; row ${b.row + 1}${b.noHeader ? ' &middot; <span style="color:var(--bad)">no header</span>' : ''}</div></td>
+      <td><div class="tags">${tags}</div>
+          ${blank.length ? `<div class="hint">faded = column present but empty for every item in this block</div>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  return card('Item Attributes', `<span class="n">${all.length}</span>`,
+    `<div class="muted" style="margin-bottom:6px"><b>Step 1</b> &mdash; item code against product type and category
+       ${incomplete ? `&nbsp;<span class="pill err">${incomplete} row${incomplete > 1 ? 's' : ''} incomplete</span>` : '&nbsp;<span class="pill yes">all complete</span>'}</div>
+     <div class="scroll" style="max-height:300px"><table><thead><tr><th style="width:190px">Item code</th><th style="width:220px">Product type</th><th>Category</th></tr></thead><tbody>${step1}</tbody></table></div>
+     <div class="muted" style="margin:18px 0 6px"><b>Step 2</b> &mdash; ${blocks.length} block${blocks.length > 1 ? 's' : ''}, each with its own attribute headers</div>
+     <table><thead><tr><th style="width:240px">Category / last level</th><th>Attribute headers</th></tr></thead><tbody>${step2}</tbody></table>
+     <div class="hint">click a tag, then use &larr; and &rarr; to step through them</div>`);
+}
+
+function checkItems() {
+  const rows = sheetRows(SUB, 'Items');
+  if (!rows.length) return card('Items', '<span class="pill err">sheet missing</span>', '');
+  const fh = findHeader(rows, sheetRows(TPL, 'Items')[0]);
+  const header = rows[fh.idx].map(txt);
+  const data = realRows(rows.slice(fh.idx + 1));
+  // Carry the position, not just the name: "Old item id" appears twice in one
+  // returned file, and the two columns do not hold the same thing.
+  const cols = header.map((hd, i) => ({ hd, i })).filter(c => c.hd && !skipped(c.hd));
+
+  if (!MANDATORY) {
+    const saved = localStorage.getItem(LS);
+    MANDATORY = new Set(saved ? JSON.parse(saved)
+      : ['Item number', 'Product name', 'Product Description', 'item group', 'Category', 'Brand', 'Sales price', 'Applicable for Ecom']);
+  }
+
+  const picker = cols.map(c =>
+    `<label><input type="checkbox" data-col="${esc(c.hd)}" ${MANDATORY.has(c.hd) ? 'checked' : ''}>${esc(c.hd)}</label>`).join('');
+
+  const want = cols.filter(c => MANDATORY.has(c.hd));
+  const idIdx = (cols.find(c => /^item number$/i.test(c.hd)) || cols[1] || cols[0] || {}).i;
+  const gaps = {};
+  let badRows = 0;
+  const detail = data.map((r, n) => {
+    const blankHere = want.filter(c => txt(r[c.i]) === '');
+    blankHere.forEach(c => gaps[c.hd] = (gaps[c.hd] || 0) + 1);
+    if (!blankHere.length) return '';
+    badRows++;
+    const id = txt(r[idIdx]) || ('row ' + (fh.idx + 2 + n));
+    return `<tr><td>${esc(id)}</td><td>${blankHere.map(c => `<code>${esc(c.hd)}</code>`).join(' ')}</td></tr>`;
+  }).join('');
+
+  // the item codes affected, per column, so each one can be copied on its own
+  const codesFor = {};
+  data.forEach((r, i) => {
+    const id = txt(r[idIdx]) || ('row ' + (fh.idx + 2 + i));
+    want.forEach(c => { if (txt(r[c.i]) === '') (codesFor[c.hd] = codesFor[c.hd] || []).push(id); });
+  });
+  const allBad = [...new Set(Object.values(codesFor).flat())];
+
+  const gapList = Object.entries(gaps).sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td><td>${Math.round(v / data.length * 100)}%</td>
+      <td><button class="btn copy" data-codes="${esc((codesFor[k] || []).join('|'))}">copy ${v} item codes</button></td></tr>`).join('');
+
+  return card('Items', badRows
+      ? `<span class="pill err">${badRows} of ${data.length} rows have a blank</span>`
+      : `<span class="pill yes">all ${data.length} rows filled</span>`,
+    headerNote(fh, 'Items') +
+    `<div class="tools">
+       <b style="font-size:12.5px">Columns that must be filled</b>
+       <button class="btn" id="mNone">clear all</button>
+       <button class="btn" id="mReset">restore defaults</button>
+       <span class="muted" style="font-size:12px">remembered on this machine</span>
+     </div>
+     <div class="cols" id="mPicker">${picker}</div>
+     ${badRows ? `
+       <div class="muted" style="margin:18px 0 6px"><b>Which columns are blank, and how often</b></div>
+       <table><thead><tr><th style="width:300px">Column</th><th style="width:80px">Blank in</th><th style="width:70px">of rows</th><th></th></tr></thead><tbody>${gapList}</tbody></table>
+       <div class="tools" style="margin:18px 0 6px">
+         <b style="font-size:12.5px">Row by row</b>
+         <span class="muted" style="font-size:12px">these cells are empty, the column itself is present</span>
+         <button class="btn copy" data-codes="${esc(allBad.join('|'))}" style="margin-left:auto">copy all ${allBad.length} item codes</button>
+       </div>
+       <div class="scroll"><table><thead><tr><th style="width:190px">Item</th><th>Blank cells</th></tr></thead><tbody>${detail}</tbody></table></div>`
+     : ''}`);
+}
+// ───────────────────────────── shell ─────────────────────────────
+// Copy a list of item codes to the clipboard, one per line, ready to paste
+// into an Excel filter box.
+function copyCodes(btn, codes) {
+  const text = codes.join('\n');
+  const done = () => { const o = btn.textContent; btn.textContent = 'copied ' + codes.length; setTimeout(() => btn.textContent = o, 1400); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallback(text, done));
+  else fallback(text, done);
+}
+function fallback(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { alert('Could not copy automatically:\n\n' + text); } ta.remove();
+  ta.remove();
+}
+
+function card(title, badge, inner) {
+  return `<div class="card"><h2>${esc(title)}<span class="n">${badge}</span></h2><div class="body">${inner}</div></div>`;
+}
+
+function tplState(name) {
+  const el = $('tplState');
+  el.textContent = 'Master template: ' + name;
+  el.className = 'ok';
+}
+
+function run() {
+  if (!TPL || !SUB) return;
+  $('out').innerHTML =
+    renderConformance() + checkCategories() + checkAttributeTypes() +
+    checkAttributeValues() + checkItemAttributes() + checkItems();
+
+  const picker = $('mPicker');
+  if (picker) {
+    picker.addEventListener('change', (e) => {
+      const c = e.target.dataset.col; if (!c) return;
+      e.target.checked ? MANDATORY.add(c) : MANDATORY.delete(c);
+      localStorage.setItem(LS, JSON.stringify([...MANDATORY]));
+      run();
+    });
+    $('mNone').onclick = () => { MANDATORY = new Set(); localStorage.setItem(LS, '[]'); run(); };
+    $('mReset').onclick = () => { localStorage.removeItem(LS); MANDATORY = null; run(); };
+  }
+  wireTags();
+  // stored pipe-separated because a newline inside an HTML attribute can be
+  // normalised to a space by the parser; copied out one per line
+  document.querySelectorAll('.copy').forEach(b => b.addEventListener('click', () => copyCodes(b, b.dataset.codes.split('|').filter(Boolean))));
+}
+
+// click a tag to select it, then walk the whole set with the arrow keys
+function wireTags() {
+  const tags = [...document.querySelectorAll('.tag')];
+  if (!tags.length) return;
+  let at = -1;
+  const select = (i) => {
+    if (i < 0 || i >= tags.length) return;
+    tags.forEach(t => t.classList.remove('sel'));
+    at = i;
+    tags[i].classList.add('sel');
+    tags[i].focus({ preventScroll: true });
+    tags[i].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+  tags.forEach((t, i) => t.addEventListener('click', () => select(i)));
+  document.addEventListener('keydown', (e) => {
+    if (at < 0) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); select(Math.min(at + 1, tags.length - 1)); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(at - 1, 0)); }
+    else if (e.key === 'Escape') { tags.forEach(t => t.classList.remove('sel')); at = -1; }
+  });
+}
+
+function load(file, which) {
+  const r = new FileReader();
+  r.onload = (e) => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+    if (which === 't') { TPL = wb; $('nameT').textContent = file.name; $('slotT').classList.add('on'); tplState(file.name + ' (this session only)'); }
+    else { SUB = wb; $('nameS').textContent = file.name; $('slotS').classList.add('on'); }
+    run();
+  };
+  r.readAsArrayBuffer(file);
+}
+
+$('fileT').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 't'));
+$('fileS').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 's'));
+
+// Load a workbook sitting beside this file. The template is picked up without
+// being asked; ?s=<filename> opens a returned workbook the same way.
+function beside(name, which) {
+  return fetch(encodeURI(name)).then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+    .then(b => {
+      const wb = XLSX.read(new Uint8Array(b), { type: 'array' });
+      if (which === 't') { TPL = wb; $('slotT').classList.add('on'); tplState(name); }
+      else { SUB = wb; $('nameS').textContent = name; $('slotS').classList.add('on'); }
+      run();
+    }).catch(() => {});
+}
+
+const qs = new URLSearchParams(location.search);
+beside(qs.get('t') || 'Product Master Template.xlsx', 't')
+  .then(() => {
+    if (!TPL) {
+      const el = $('tplState');
+      el.textContent = 'Master template NOT FOUND — open settings and choose it';
+      el.className = 'bad';
+      $('tplBox').open = true;
+    }
+    const s = qs.get('s'); if (s) return beside(s, 's');
+  });
+</script>
+</body>
+</html>
