@@ -24,6 +24,25 @@
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+
+  /* Scrollbars, so the browser's own pale one does not sit against all this
+     black. Firefox takes the two-value shorthand; everything else needs the
+     -webkit- pseudo-elements, so both are here. Applies to the page and to
+     the scrolling result tables alike. */
+  html{scrollbar-color:var(--line2) var(--bg);scrollbar-width:thin}
+  ::-webkit-scrollbar{width:12px;height:12px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{
+    background:var(--line2);border-radius:8px;
+    border:3px solid var(--bg);   /* inset, so the thumb reads as a slim bar */
+  }
+  ::-webkit-scrollbar-thumb:hover{background:var(--gold-dim)}
+  ::-webkit-scrollbar-corner{background:var(--bg)}
+  .scroll{scrollbar-color:var(--line2) var(--panel)}
+  .scroll::-webkit-scrollbar-track,
+  .scroll::-webkit-scrollbar-corner{background:var(--panel)}
+  .scroll::-webkit-scrollbar-thumb{background:var(--line2);border-color:var(--panel)}
+  .scroll::-webkit-scrollbar-thumb:hover{background:var(--gold-dim)}
   code{background:#000;border:1px solid var(--line);padding:1px 6px;border-radius:4px;font-size:12.5px;color:var(--gold)}
 
   .slot{background:var(--panel);border:1px dashed var(--line2);border-radius:10px;padding:16px}
@@ -95,7 +114,7 @@
   tr.sample td:first-child{font-weight:600}
   /* ── the page ─────────────────────────────────────────────────────────── */
   body{
-    background:#0a0c11;
+    background:#0b0b09;
     background-image:
       linear-gradient(118deg, rgba(245,197,66,.055) 0 2px, transparent 2px 240px),
       linear-gradient(118deg, rgba(245,197,66,.035) 0 1px, transparent 1px 420px),
@@ -110,7 +129,7 @@
   }
   .brandmark{
     width:52px;height:52px;border-radius:13px;flex:none;
-    background:linear-gradient(160deg,#1d2029,#14171e);
+    background:linear-gradient(160deg,#20201b,#161613);
     border:1px solid rgba(245,197,66,.45);color:var(--gold);
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 8px 26px -12px rgba(245,197,66,.5);
@@ -193,6 +212,107 @@
   .ready-foot svg{width:16px;height:16px}
   .ready-foot span{font-size:12.5px}
 </style>
+
+<script>
+/* Intro video, held over the page until it has finished.
+
+   This is one page, so every load is either arriving or refreshing — exactly
+   the two cases it should play for. It runs at the end of <head>, before any
+   of the page exists, so nothing flashes up behind it.
+
+   The page is never left hidden. The hiding class goes on only once the video
+   element is actually there, and it comes off again on ended, on error, on a
+   refused autoplay, and on a hard timeout whatever else happens. A preloader
+   that can strand the tool behind a black screen is worse than no preloader. */
+(function () {
+  'use strict';
+  var SRC = 'preloader.mp4', MAX_WAIT = 12000, FADE = 420;
+
+  // Somebody who has asked their system for less motion does not want four
+  // seconds of animation in front of the thing they came to use.
+  try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+
+  var root = document.documentElement, done = false, timer = null;
+
+  function reveal() {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    root.className = root.className.replace(/\bpl-on\b/g, '');
+    var el = document.getElementById('preloader');
+    if (!el) return;
+    el.className = 'pl-out';
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, FADE + 50);
+  }
+
+  try {
+    var style = document.createElement('style');
+    style.textContent =
+      'html.pl-on,html.pl-on body{overflow:hidden!important}' +
+      'html.pl-on body{visibility:hidden!important}' +
+      '#preloader{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;' +
+        'background:#0b0b09;display:flex;align-items:center;justify-content:center;' +
+        'transition:opacity ' + FADE + 'ms ease}' +
+      // pointer-events:none so the browser never treats this as a video the
+      // viewer is reaching for. Edge puts its picture-in-picture buttons over
+      // anything it thinks is a real video being hovered.
+      '#preloader video{width:100%;height:100%;object-fit:contain;display:block;' +
+        'pointer-events:none;user-select:none}' +
+      '#preloader.pl-out{opacity:0;pointer-events:none}';
+    (document.head || root).appendChild(style);
+
+    var v = document.createElement('video');
+    v.src = SRC;
+    v.muted = true; v.defaultMuted = true;   // the only way a browser will autoplay
+    v.autoplay = true; v.playsInline = true; v.preload = 'auto';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    v.setAttribute('webkit-playsinline', ''); v.setAttribute('aria-hidden', 'true');
+
+    // This is an animation, not a video somebody is watching, so every piece of
+    // player furniture is turned off. Edge was floating its picture-in-picture
+    // and "open in a new window" buttons over the top of it; disablePictureInPicture
+    // is what removes those. The rest keeps Cast, download and the context menu
+    // away on the other browsers.
+    v.disablePictureInPicture = true;
+    v.disableRemotePlayback = true;
+    v.controls = false;
+    v.setAttribute('disablepictureinpicture', '');
+    v.setAttribute('disableremoteplayback', '');
+    v.setAttribute('controlslist', 'nodownload noplaybackrate noremoteplayback nofullscreen');
+    v.setAttribute('tabindex', '-1');
+    v.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    var box = document.createElement('div');
+    box.id = 'preloader';
+    box.appendChild(v);
+
+    // Appended to <html> because <body> does not exist yet at this point in
+    // the parse. A fixed-position element renders there perfectly well.
+    root.appendChild(box);
+    root.className += ' pl-on';
+
+    timer = setTimeout(reveal, MAX_WAIT);          // the backstop
+    v.addEventListener('ended', reveal);
+    v.addEventListener('error', reveal);
+    v.addEventListener('stalled', function () { setTimeout(reveal, 4000); });
+
+    // Take the backdrop from the video's own corner pixel, so letterboxing on
+    // a screen that is not 16:9 blends into the video instead of a guess.
+    v.addEventListener('loadeddata', function () {
+      try {
+        var c = document.createElement('canvas'); c.width = c.height = 8;
+        var g = c.getContext('2d');
+        g.drawImage(v, 0, 0, 8, 8);
+        var p = g.getImageData(1, 1, 1, 1).data;
+        box.style.background = 'rgb(' + p[0] + ',' + p[1] + ',' + p[2] + ')';
+      } catch (e) {}
+    });
+
+    var play = v.play();
+    if (play && play.catch) play.catch(reveal);    // autoplay refused — do not trap the page
+  } catch (e) { reveal(); }
+})();
+</script>
 </head>
 <body>
 
@@ -259,17 +379,17 @@
       <svg viewBox="0 0 160 150" fill="none">
         <defs>
           <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#2b3140"/><stop offset="1" stop-color="#1b2029"/>
+            <stop offset="0" stop-color="#26261f"/><stop offset="1" stop-color="#141311"/>
           </linearGradient>
         </defs>
-        <path d="M34 18h62l24 24v86a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6Z" fill="url(#pg)" stroke="#3b4150"/>
-        <path d="M96 18v24h24" fill="#363c49" stroke="#464d5d"/>
+        <path d="M34 18h62l24 24v86a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6Z" fill="url(#pg)" stroke="#3a3a32"/>
+        <path d="M96 18v24h24" fill="#2c2c26" stroke="#4a4a40"/>
         <rect x="42" y="52" width="66" height="8" rx="2" fill="#f5c542" opacity=".85"/>
-        <g stroke="#4a5162">
-          <rect x="42" y="66" width="66" height="46" rx="2" fill="#141821"/>
+        <g stroke="#4a4a40">
+          <rect x="42" y="66" width="66" height="46" rx="2" fill="#121210"/>
           <path d="M42 80h66M42 94h66M64 66v46M86 66v46"/>
         </g>
-        <circle cx="116" cy="112" r="20" fill="#121620" stroke="#f5c542" stroke-width="3"/>
+        <circle cx="116" cy="112" r="20" fill="#121210" stroke="#f5c542" stroke-width="3"/>
         <path d="m108 112 6 6 11-12" stroke="#f5c542" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
@@ -1037,8 +1157,11 @@ function card(title, badge, inner) {
 }
 
 function tplState(name) {
+  // Just the file name — the strip already carries its own "Master template:"
+  // label beside this span, so repeating it here read "Master template:
+  // Master template: Product Master Template.xlsx".
   const el = $('tplState');
-  el.textContent = 'Master template: ' + name;
+  el.textContent = name;
   el.className = 'ok';
 }
 
@@ -1146,7 +1269,7 @@ beside(qs.get('t') || 'Product Master Template.xlsx', 't')
   .then(() => {
     if (!TPL) {
       const el = $('tplState');
-      el.textContent = 'Master template NOT FOUND — open settings and choose it';
+      el.textContent = 'NOT FOUND — open settings and choose it';
       el.className = 'bad';
       $('tplBox').open = true;
     }
