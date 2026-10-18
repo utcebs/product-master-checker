@@ -71,6 +71,33 @@ which rows. The item codes can be copied to the clipboard, one per line, to past
 straight into an Excel filter. Your choice of mandatory columns is remembered in
 the browser.
 
+## The two D365 exports
+
+Both sit beside the page and load on their own. Both are optional — without them
+every other check still works, and the page says plainly that it is judging the
+file on its own rather than against what is already live.
+
+**Which entity to re-export from**, so nobody has to go hunting for it later:
+
+| File in this folder | D365 entity | Sheet it writes |
+|---|---|---|
+| `Master Attribute Types.xlsx` | **Product attribute value types** | `Product_attribute_value_types` |
+| `Attribute Group Master.xlsx` | **Product attribute group attribute assignments** | `Product_attribute_group_attrib` |
+
+The entity names are also printed on the settings strip in the page itself.
+
+**Master Attribute Types** turns "38 attribute types to set up" into the three
+numbers that matter: how many already exist, how many already exist *set up
+differently* — the dangerous ones, because an attribute type is shared across
+categories — and how many are genuinely new.
+
+**Attribute Group Master** marks, on Step 2 of Item Attributes, the attribute
+headers not yet linked to that block's attribute group. An attribute type
+existing is not the same as it being linked to the group that needs it.
+
+Re-export both whenever attribute types or groups are added in D365. A stale
+list calls real attributes new.
+
 ## Changing the template
 
 Replace `Product Master Template.xlsx` in this folder. The page loads it on its
@@ -95,8 +122,16 @@ template should really carry both.
 ## Files
 
 ```
-index.html                the whole tool
-lib/xlsx.full.min.js      SheetJS, vendored so it works with no internet
-serve.mjs                 a ~20 line static server, only so the page can read the template
-Product Master Template.xlsx
+index.html                     the whole tool
+lib/xlsx.full.min.js           SheetJS, vendored so it works with no internet
+serve.mjs                      a small static server, only so the page can read the files beside it
+preloader.mp4                  the intro, played on entry and on refresh
+favicon.svg
+Product Master Template.xlsx   the template every returned workbook is checked against
+Master Attribute Types.xlsx    D365 entity: Product attribute value types
+Attribute Group Master.xlsx    D365 entity: Product attribute group attribute assignments
 ```
+
+Real returned workbooks are gitignored — they are live product data and have no
+business in a repo. Drop one in this folder and the tool will read it; it just
+never gets committed.

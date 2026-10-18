@@ -20,6 +20,7 @@
     --bg:#0e0e0c; --panel:#171714; --panel2:#1e1e1a; --line:#2c2c26; --line2:#3a3a32;
     --ink:#f2efe6; --muted:#9a968a; --muted2:#6f6c63;
     --gold:#f5c542; --gold-dim:#8a7024; --ok:#7ec97e; --bad:#ef6a52; --warn:#f5c542;
+    --add:#ff9d3c;   /* a job still to do - see .tag.add */
     --font:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
   }
   *{box-sizing:border-box}
@@ -47,6 +48,14 @@
 
   .slot{background:var(--panel);border:1px dashed var(--line2);border-radius:10px;padding:16px}
   .slot.on{border-style:solid;border-color:var(--gold-dim)}
+  /* The D365 entity a file came from. Stated on the slot itself so that in six
+     months nobody has to work out which entity to re-export from. */
+  .entity{
+    margin-top:9px;padding:7px 11px;border-radius:8px;font-size:12.5px;
+    background:rgba(245,197,66,.06);border:1px solid rgba(245,197,66,.22);color:var(--muted);
+  }
+  .entity b{color:var(--gold);font-weight:600}
+  .entity code{font-size:11.5px}
   .slot h3{margin:0 0 3px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
   .slot .f{font-size:13px;color:var(--muted2);word-break:break-all}
   input[type=file]{margin-top:9px;font-size:12.5px;width:100%;color:var(--muted)}
@@ -84,6 +93,29 @@
   .cols{columns:3;column-gap:22px}
   .cols label{display:block;break-inside:avoid;font-size:12.5px;padding:2px 0;cursor:pointer;color:var(--ink)}
   .cols input{margin-right:6px;accent-color:var(--gold)}
+  /* a column the master template has but THIS workbook does not: still tickable,
+     because the list is about what should be filled, not about one file */
+  .cols label.absent{color:var(--muted2)}
+  .cols label.absent input{opacity:.55}
+  .absent-key{color:var(--muted2)}
+
+  /* which D365 attribute group each block is being checked against. Shown on
+     every block, right or wrong, so the answer can be trusted without going to
+     look it up. */
+  .against{font-size:11.5px;margin-top:5px;line-height:1.65}
+  .against b{color:var(--gold);font-weight:600}
+  .against .pill{font-size:10px;padding:0 6px;vertical-align:1px}
+  .against .nogroup{color:var(--warn)}
+  .against .nogroup b{color:var(--warn)}
+  /* the change-it control: quiet until wanted, so it does not shout over the
+     answer it is there to correct */
+  .against .sel{
+    font-size:11px;padding:1px 5px;margin-left:6px;max-width:190px;
+    background:var(--panel2);border-color:var(--line);color:var(--muted2);
+  }
+  .against .sel:hover,.against .sel:focus{border-color:var(--gold-dim);color:var(--ink)}
+  /* the quiet grey is for the closed control only — never for the open list */
+  .against .sel option{color:#f2efe6}
   .btn{border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:7px;
        padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer}
   .btn:hover{border-color:var(--gold-dim);color:var(--gold)}
@@ -108,6 +140,35 @@
   .note.ok div{color:var(--muted)}
   .note.warn{background:rgba(245,197,66,.07);border:1px solid rgba(245,197,66,.3);color:var(--muted);display:block}
   .note.warn b{color:var(--gold)}
+  /* "still to be linked to its attribute group" — deliberately a different
+     colour from the warnings, because it is a job to do, not a mistake */
+  /* An attribute header not yet linked to this block's attribute group: a job
+     still to do. Orange, because green reads as "already done", red as "wrong"
+     and gold is the warning colour. The "+" is deliberate — the state should
+     survive a colour-blind reader and a black-and-white print. */
+  .pill.add{background:var(--add);color:#231405;border:1px solid var(--add)}
+  .tag.add{border-color:var(--add);color:var(--add);background:rgba(255,157,60,.10);font-weight:600}
+  .tag.add::before{content:"+ ";opacity:.85}
+  .tag.add.off{border-style:dashed;background:transparent}
+  .tag.add.sel{background:var(--gold);color:#000;border-color:var(--gold)}
+  .sel{
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line2);
+    border-radius:7px;padding:4px 8px;font:inherit;font-size:12.5px;max-width:280px;
+  }
+  .sel:focus{outline:none;border-color:var(--gold-dim)}
+  /* The open dropdown is drawn by the browser, not by this stylesheet: it does
+     NOT inherit the control's colours, so a muted grey on the browser's white
+     popup came out unreadable. Each option needs its own pair. */
+  .sel option{background:#1a1a16;color:#f2efe6}
+  .sel option:checked{background:#2c2c26;color:var(--gold)}
+
+  /* the "against what already exists in D365" section, inside the card */
+  details.vsmaster{background:transparent;border:1px solid var(--line);border-radius:10px}
+  details.vsmaster summary{padding:11px 13px;font-size:13.5px}
+  details.vsmaster summary b{color:var(--gold);font-weight:600}
+  details.vsmaster > div{padding:0 13px 12px}
+  details.vsmaster .tools{flex-wrap:wrap;font-size:12.5px}
+
   .note.bad{background:rgba(224,110,90,.08);border:1px solid rgba(224,110,90,.4);color:var(--muted);display:block}
   .note.bad b{color:var(--bad)}
   tr.sample td{color:var(--bad)}
@@ -371,6 +432,32 @@
         a file chosen here lasts until the page is reloaded.
       </div>
     </div>
+    <div class="slot" id="slotM" style="margin-top:12px">
+      <h3>Existing attribute types</h3>
+      <div class="f" id="masterState">Master Attribute Types.xlsx (loaded automatically)</div>
+      <input type="file" id="fileM" accept=".xlsx,.xlsm,.xls">
+      <div class="entity">Export from D365 &rarr; Data management &rarr; entity
+        <b>Product attribute value types</b>
+        <span class="muted">(the sheet it writes is <code>Product_attribute_value_types</code>)</span></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">
+        Lets the check say which attribute types already exist and which conflict with them.
+        <b>Re-export it whenever attribute types are added in D365</b> &mdash; a stale list
+        will call real attributes new.
+      </div>
+    </div>
+    <div class="slot" id="slotG" style="margin-top:12px">
+      <h3>Attribute groups</h3>
+      <div class="f" id="groupState">Attribute Group Master.xlsx (loaded automatically)</div>
+      <input type="file" id="fileG" accept=".xlsx,.xlsm,.xls">
+      <div class="entity">Export from D365 &rarr; Data management &rarr; entity
+        <b>Product attribute group attribute assignments</b>
+        <span class="muted">(the sheet it writes is <code>Product_attribute_group_attrib</code>)</span></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">
+        Which attribute types are already linked to which attribute group. An attribute type
+        existing is not the same as it being linked to the group that needs it, and this is what
+        tells the two apart.
+      </div>
+    </div>
   </details>
 
 <div id="out">
@@ -507,6 +594,16 @@ const colIndex = (header, re) => header.findIndex(h => re.test(txt(h)));
 
 // ───────────────────────────── state ─────────────────────────────
 let TPL = null, SUB = null, MANDATORY = null;
+// The attribute types that already exist in D365, exported from
+// the D365 entity "Product attribute value types" (sheet:
+// Product_attribute_value_types). Optional: without it every check still works,
+// the file is simply judged on its own instead of against what is already live.
+let MASTER = null;
+// Which attribute types are already linked to which attribute group in D365,
+// exported from the D365 entity "Product attribute group attribute assignments"
+// (sheet: Product_attribute_group_attrib). Also optional: without it the
+// check cannot say which links still have to be made, and says so.
+let MASTERGRP = null;
 // Bumped when the default list changes, so a saved selection from before
 // does not quietly override the new defaults for everyone who has used the tool.
 const LS = 'pmchecker.mandatory.v2';
@@ -647,6 +744,431 @@ function tplSamplePaths() {
     .filter(Boolean));
 }
 
+// ── the attribute groups, and what is already linked to them ────────────────
+// Exported from the D365 entity "Product attribute group attribute assignments"
+// (sheet Product_attribute_group_attrib):
+//   PRODUCTATTRIBUTEGROUPNAME · PRODUCTATTRIBUTETYPENAME · PRODUCTATTRIBUTENAME
+// An attribute type existing in D365 is not the same as it being linked to the
+// group that needs it — that link is a separate job, and this is what tells us
+// which ones are still missing.
+function attributeGroups() {
+  if (!MASTERGRP) return null;
+  const rows = realRows(sheetRows(MASTERGRP, MASTERGRP.SheetNames[0]));
+  if (rows.length < 2) return null;
+  const h = rows[0].map(txt);
+  const iG = colIndex(h, /^productattributegroupname$/i);
+  const iT = colIndex(h, /^productattributetypename$/i);
+  if (iG < 0 || iT < 0) return null;
+  const by = new Map();
+  for (const r of rows.slice(1)) {
+    const g = txt(r[iG]); if (!g) continue;
+    // display keeps the original spelling, so a report can quote D365's own
+    // wording rather than the lower-cased key used for matching
+    if (!by.has(norm(g))) by.set(norm(g), { name: g, types: new Set(), display: new Map() });
+    const t = txt(r[iT]);
+    if (t) { by.get(norm(g)).types.add(norm(t)); by.get(norm(g)).display.set(norm(t), t); }
+  }
+  return by.size ? by : null;
+}
+
+// What each attribute-group name in a file maps to in D365. The group is NOT
+// the category: the name a file uses need not be the name D365 uses, so where
+// they differ the mapping is the user's to make, not something to guess at.
+const GLS = 'pmchecker.groupmap.v1';       // remembered value -> D365 group name
+let GROUPMAP = null;
+
+function groupMap() {
+  if (!GROUPMAP) {
+    try { GROUPMAP = new Map(JSON.parse(localStorage.getItem(GLS) || '[]')); }
+    catch (e) { GROUPMAP = new Map(); }
+  }
+  return GROUPMAP;
+}
+function saveGroupMap() {
+  try { localStorage.setItem(GLS, JSON.stringify([...groupMap()])); } catch (e) {}
+}
+
+// What a value in that column means in D365: an exact match, then whatever the
+// user mapped it to by hand. No fuzzy guessing here — a wrong group silently
+// marks the wrong attributes as already linked, which is worse than saying
+// nothing. Unmatched values are reported so they can be mapped.
+function resolveGroup(value, groups) {
+  const r = resolveGroupInfo(value, groups);
+  return r ? r.group : null;
+}
+
+// The same, but saying HOW it was resolved, so the page can show which D365
+// group each category is actually being checked against. A check nobody can
+// see the workings of is a check nobody should trust.
+function resolveGroupInfo(value, groups) {
+  const v = txt(value);
+  if (!v) return null;
+
+  // A choice made here beats the automatic match, including a deliberate "this
+  // is not an attribute group" — otherwise a wrong auto-match could not be
+  // corrected. An entry set to "" means exactly that; no entry at all means
+  // leave it to the automatic match below.
+  if (groupMap().has(norm(v))) {
+    const chosen = groupMap().get(norm(v));
+    if (!chosen) return null;
+    const g = groups.get(norm(chosen));
+    if (g) return { group: g, via: 'mapped' };
+  }
+
+  // found by name; the lookup is on the normalised name, so case and spacing
+  // differences are already covered and count as an exact match
+  const direct = groups.get(norm(v));
+  if (direct) return { group: direct, via: 'exact' };
+  return null;
+}
+
+// What the automatic match alone would say — used so that choosing the value
+// the tool already picked clears the override instead of pinning it.
+function autoGroup(value, groups) {
+  const g = groups.get(norm(txt(value)));
+  return g ? g.name : '';
+}
+
+// The attribute-group panel, shown above Step 2 of Item Attributes — which of
+// the block categories D365 recognises as an attribute group, and what the rest
+// should map to. The mapping is a choice rather than a guess: an attribute group
+// is not the category, and the name a file uses need not be the name D365 uses.
+// The control for changing which attribute group a category is checked against.
+// On every block, not only the ones D365 did not recognise — an automatic match
+// can be wrong too, and a check you cannot correct is a check you cannot trust.
+function groupSelect(cat, current, groups) {
+  const names = [...groups.values()].map(g => g.name).sort();
+  return `<select class="sel groupmap" data-raw="${esc(cat)}"
+      data-auto="${esc(autoGroup(cat, groups))}" title="which attribute group to check &quot;${esc(cat)}&quot; against">
+    <option value="">&mdash; not an attribute group &mdash;</option>
+    ${names.map(n => `<option value="${esc(n)}"${
+      current && norm(n) === norm(current) ? ' selected' : ''}>${esc(n)}</option>`).join('')}
+  </select>`;
+}
+
+function groupPanel(groups, groupSeen, needLink) {
+  if (!groups) {
+    return `<div class="note warn" style="margin:0 0 12px">
+      <b>No attribute group list loaded.</b> Put
+      <code>Attribute Group Master.xlsx</code> &mdash; the D365 entity
+      <b>Product attribute group attribute assignments</b> &mdash; beside this page to see which attribute headers still need adding to their group.</div>`;
+  }
+  const unknown = [...groupSeen.values()].filter(x => !x.group);
+  const known = [...groupSeen.values()].filter(x => x.group);
+
+  if (!unknown.length && !needLink) {
+    return `<div class="note ok" style="margin:0 0 12px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.2 2.6 2.6 5-5.4"/></svg>
+      <div><b>Every attribute header is already linked to its attribute group.</b>
+        All ${known.length} group${known.length === 1 ? '' : 's'} checked against the ${groups.size} in D365.</div></div>`;
+  }
+
+  return `<details class="vsmaster"${unknown.length ? ' open' : ''} style="margin:0 0 12px">
+    <summary><b>Attribute groups</b>
+      <span class="muted">&mdash; ${known.length} of ${groupSeen.size} recognised${
+        unknown.length ? ', ' + unknown.length + ' to identify' : ''}${
+        needLink ? ', ' + needLink + ' still to add' : ''}</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+    <div style="padding:0 2px 4px">
+      ${unknown.length ? `
+        <div class="note warn" style="margin:0 0 10px">
+          <b>${unknown.length} categor${unknown.length === 1 ? 'y is' : 'ies are'} not an attribute group in D365.</b>
+          Those blocks are left unchecked, because guessing the wrong group would mark the wrong
+          attributes as already linked:
+          <div class="tags" style="margin-top:7px">${
+            unknown.map(u => `<span class="tag off">${esc(u.raw)}</span>`).join('')}</div>
+          <div class="muted" style="font-size:12.5px;margin-top:7px">Set the right group on the block
+          itself, below &mdash; the dropdown beside &ldquo;checked against&rdquo;. It is there on every
+          block, so an automatic match can be overruled too. Choices are remembered on this machine.</div>
+        </div>` : ''}
+      ${known.length ? `<div class="muted" style="font-size:12.5px">Checked against:
+        <span class="tags" style="display:inline-flex;vertical-align:middle">${
+          known.slice(0, 25).map(k => `<span class="tag">${esc(k.group.name)}</span>`).join('')}</span></div>` : ''}
+    </div></details>`;
+}
+
+// ── the attribute types that already exist in D365 ──────────────────────────
+// Read from the export's own column names, so a re-export drops straight in.
+//   PRODUCTATTRIBUTETYPENAME · TSCFILTERABLE (Yes/No) · TSCECOMFEATURES
+//   (KeyFeatures / TechnicalSpec / None — "None" means D365 itself has not
+//   classified it, which is a finding in its own right, not a tidy default.)
+function masterTypes() {
+  if (!MASTER) return null;
+  const rows = realRows(sheetRows(MASTER, MASTER.SheetNames[0]));
+  if (rows.length < 2) return null;
+  const h = rows[0].map(txt);
+  const iN = colIndex(h, /^productattributetypename$/i);
+  const iF = colIndex(h, /^tscfilterable$/i);
+  const iE = colIndex(h, /^tscecomfeatures$/i);
+  if (iN < 0) return null;
+  const by = new Map();
+  for (const r of rows.slice(1)) {
+    const name = txt(r[iN]); if (!name) continue;
+    const e = txt(r[iE]);
+    by.set(norm(name), {
+      name: name, filterable: isYes(r[iF]),
+      key: /^keyfeatures?$/i.test(e), tech: /^technicalspec$/i.test(e),
+      unset: /^none$/i.test(e) || !e,
+    });
+  }
+  return by.size ? by : null;
+}
+
+// How a name in the file lines up with the master list.
+//
+// An exact match wins outright. Otherwise EVERY plausible candidate is
+// returned, not the first one found — "Dimensions" is one character from
+// "Dimension" and is also "Dimensions (cm)" without its unit, and D365 holds
+// both. Picking one and printing it as the answer is a guess dressed up as a
+// finding; the list is shown instead so somebody who knows can choose.
+//
+// Three ways a name can be a candidate:
+//   same once punctuation and case are stripped   Auto Shut-Off / Auto Shut Off
+//   one character apart                           Attchments / Attachments
+//   the same name plus a bracketed qualifier      Dimensions / Dimensions (cm)
+// The last is restricted to a bracketed tail on purpose: without that, "COO"
+// would "match" Cooking End Signal, Cooking Levels, Cool Shot and three more.
+const flat = (s) => norm(s).replace(/[^a-z0-9]/g, '');
+const unbracketed = (s) => norm(s).replace(/\s*\([^)]*\)\s*$/, '');
+
+// Is this attribute name the same attribute as that one? Used when checking a
+// block's attribute headers against what its group already holds, where the
+// two sides are written by different people years apart:
+//
+//   Colour            Color                 spelling
+//   Model Number      Model No.             abbreviation
+//   Speaker drivers   Speaker driver        plural
+//   Diamensions (cm)  Dimensions (cm)       typo
+//   Dimensions        Dimensions (cm)       a unit added on one side
+//
+// Each rule is deliberately tight. The one-character rule needs five letters or
+// it would match COO to Color; the bracket rule only applies when ONE side has
+// a bracket, or "Battery Capacity (Earbud)" and "Battery Capacity (Charging
+// Case)" would collapse into each other.
+const WORD_ALIAS = { colour: 'color', grey: 'gray', number: 'no', num: 'no', qty: 'quantity' };
+function attrWords(s) {
+  return norm(s).split(/[^a-z0-9]+/).filter(Boolean).map(w => {
+    if (WORD_ALIAS[w]) return WORD_ALIAS[w];
+    if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) return w.slice(0, -1);  // plural
+    return w;
+  });
+}
+const attrKey = (s) => attrWords(s).join('');
+const hasBracket = (s) => /\([^)]*\)/.test(String(s));
+
+// Digits are never a spelling difference. Unit1 and Unit2 are one character
+// apart and are emphatically not the same attribute; so are Factor1/Factor3 and
+// Barcode1/Barcode2. Any fuzzy rule below is off the table unless the digits
+// match exactly.
+const digitsOf = (s) => (String(s).match(/\d/g) || []).join('');
+
+function sameAttr(a, b) {
+  if (norm(a) === norm(b)) return true;
+  if (digitsOf(a) !== digitsOf(b)) return false;
+  const ka = attrKey(a), kb = attrKey(b);
+  if (!ka || !kb) return false;
+  if (ka === kb) return true;
+  if (oneEditApart(ka, kb)) return true;
+  // a unit or qualifier in brackets on exactly one side
+  if (hasBracket(a) !== hasBracket(b)) {
+    const bare = (s) => attrKey(String(s).replace(/\s*\([^)]*\)\s*/g, ' '));
+    const ba = bare(a), bb = bare(b);
+    if (ba && ba === bb) return true;
+    if (ba && bb && oneEditApart(ba, bb)) return true;
+  }
+  return false;
+}
+
+function oneEditApart(a, b) {
+  if (a.length < 5 || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (b.length > a.length) j++;
+    else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+// Other attribute types in D365 whose name is this one plus (or minus) whole
+// extra words: "Brand" / "Brand Name", "Model" / "Model No.", "Speed" /
+// "Speed Output". Used for the possibility column on a conflict — when the file
+// describes an attribute that D365 has set up differently, the manager may
+// simply have meant a NEIGHBOURING one that is already set up exactly as
+// described. Whole words only, and at most two extra, or "Speed" drags in
+// "Max Spin Speed" and "Air Flow Speeds" with it.
+const wordsOf = (s) => norm(s).split(/[^a-z0-9]+/).filter(Boolean);
+function relatedNames(name, master) {
+  const A = wordsOf(name);
+  if (!A.length) return [];
+  const out = [];
+  for (const m of master.values()) {
+    if (norm(m.name) === norm(name)) continue;
+    const B = wordsOf(m.name);
+    if (!B.length) continue;
+    const short = A.length <= B.length ? A : B, long = A.length <= B.length ? B : A;
+    if (long.length - short.length > 2) continue;
+    if (short.every((w, i) => long[i] === w)) out.push(m);
+  }
+  return out;
+}
+
+function masterCandidates(name, master) {
+  const exact = master.get(norm(name));
+  if (exact) return { exact: exact, candidates: [] };
+
+  const want = flat(name), bare = flat(unbracketed(name));
+  const out = [], seen = new Set();
+  const add = (m, why) => { if (!seen.has(m.name)) { seen.add(m.name); out.push({ hit: m, why: why }); } };
+
+  for (const m of master.values()) {
+    const have = flat(m.name);
+    if (have === want) { add(m, 'punctuation'); continue; }
+    if (oneEditApart(want, have)) { add(m, 'one character'); continue; }
+    // the same name with a unit or qualifier in brackets on one side
+    const hb = flat(unbracketed(m.name));
+    if (hb !== have && hb === want) { add(m, 'qualifier'); continue; }
+    if (bare !== want && bare === have) add(m, 'qualifier');
+  }
+  return { exact: null, candidates: out };
+}
+
+// The file's attribute types set against the ones D365 already has. This turns
+// "38 to set up" — which reads as 38 jobs — into the three numbers that
+// actually matter: what is new, what already exists, and what DISAGREES with
+// what is live. The last of those is the dangerous one: an attribute type is
+// shared, so changing it to suit one category changes it for every category
+// already using it.
+function againstMaster(list) {
+  const master = masterTypes();
+  if (!master) {
+    return `<div class="note warn" style="margin:0 0 14px">
+      <b>No list of existing attribute types loaded.</b>
+      This file is being judged on its own, so everything in it looks new.
+      Put <code>Master Attribute Types.xlsx</code> &mdash; the D365 entity
+      <b>Product attribute value types</b> &mdash; beside this page to see
+      what already exists in D365 and what conflicts with it.</div>`;
+  }
+
+  var same = [], conflict = [], fresh = [];
+  // Keyed by name: the same attribute type written two ways in one file is ONE
+  // thing to look up, not two identical lines in the report.
+  const nearlyBy = new Map();
+  for (const t of list) {
+    const found = masterCandidates(t.name, master);
+    if (found.exact) {
+      const m = found.exact;
+      if (m.filterable === t.f && m.key === t.k && m.tech === t.s) same.push(t);
+      else conflict.push({ t: t, m: m });
+      continue;
+    }
+    if (!found.candidates.length) { fresh.push(t); continue; }
+    const k = norm(t.name);
+    if (!nearlyBy.has(k)) nearlyBy.set(k, { name: t.name, cands: found.candidates });
+  }
+  const nearly = [...nearlyBy.values()];
+
+  const how = (f, k, s, unset) =>
+    (f ? '<span class="pill yes">Filterable</span>' : '<span class="pill no">not filterable</span>') + ' ' +
+    (unset ? '<span class="pill wrn">unclassified</span>'
+      : k && s ? '<span class="pill err">both</span>'
+      : k ? '<span class="pill yes">Key feature</span>'
+      : s ? '<span class="pill yes">Tech spec</span>'
+      : '<span class="pill err">neither</span>');
+
+  // A conflict may not be a disagreement at all — the manager may have meant a
+  // neighbouring attribute type that D365 already has set up exactly as they
+  // describe. Those are offered here as possibilities, never as the answer,
+  // with the ones matching this file's settings first.
+  const sameAsFile = (x, t) => x.filterable === t.f && x.key === t.k && x.tech === t.s;
+  const maybeFor = (c) => {
+    const rel = relatedNames(c.t.name, master);
+    if (!rel.length) return '<span class="muted">&mdash;</span>';
+    rel.sort((a, b) => (sameAsFile(b, c.t) ? 1 : 0) - (sameAsFile(a, c.t) ? 1 : 0));
+    const show = rel.slice(0, 3);
+    return show.map(x => `<div style="margin-bottom:3px">
+        <b style="color:${sameAsFile(x, c.t) ? 'var(--gold)' : 'var(--muted)'}">${esc(x.name)}</b>
+        ${sameAsFile(x, c.t) ? '<span class="pill yes" style="margin-left:5px">set up as this file says</span>' : ''}
+        <div class="muted" style="font-size:11.5px">${
+          (x.filterable ? 'filterable' : 'not filterable') + ' &middot; ' +
+          (x.unset ? 'unclassified' : x.key ? 'key feature' : x.tech ? 'tech spec' : 'neither')}</div>
+      </div>`).join('') +
+      (rel.length > show.length ? `<div class="muted" style="font-size:11.5px">+${rel.length - show.length} more with a similar name</div>` : '');
+  };
+
+  const anyMaybe = conflict.some(c => relatedNames(c.t.name, master).length);
+  const rows = conflict.map(c => `<tr>
+      <td><b>${esc(c.t.name)}</b></td>
+      <td>${how(c.t.f, c.t.k, c.t.s, false)}</td>
+      <td>${how(c.m.filterable, c.m.key, c.m.tech, c.m.unset)}</td>
+      ${anyMaybe ? `<td>${maybeFor(c)}</td>` : ''}</tr>`).join('');
+
+  const tagList = (items, cls) => `<div class="tags" style="margin-top:7px">${
+    items.slice(0, 60).map(x => `<span class="tag${cls || ''}">${esc(x)}</span>`).join('')}${
+    items.length > 60 ? `<span class="tag off">+${items.length - 60} more</span>` : ''}</div>`;
+
+  const head = `<div class="tools" style="margin:0 0 10px;gap:14px">
+      <span><b style="color:var(--ok)">${same.length}</b> <span class="muted">already in D365, set up the same way</span></span>
+      <span><b style="color:var(--bad)">${conflict.length}</b> <span class="muted">already there but set up differently</span></span>
+      ${nearly.length ? `<span><b style="color:var(--warn)">${nearly.length}</b> <span class="muted">almost certainly an existing one</span></span>` : ''}
+      <span><b style="color:var(--gold)">${fresh.length}</b> <span class="muted">genuinely new</span></span>
+    </div>`;
+
+  const body =
+    (conflict.length ? `
+      <div class="note bad" style="margin:0 0 12px">
+        <b>${conflict.length} attribute type${conflict.length === 1 ? '' : 's'} already exist${conflict.length === 1 ? 's' : ''} in D365, set up differently.</b>
+        An attribute type is shared across categories &mdash; changing one to suit this
+        file changes it everywhere it is already used. Settle each of these before setting anything up.
+        <div class="scroll" style="max-height:340px;margin-top:9px">
+          <table><thead><tr><th style="width:190px">Attribute type</th><th style="width:240px">This file says</th>
+            <th style="width:240px">D365 already has</th>
+            ${anyMaybe ? '<th>Or did they mean&hellip;</th>' : ''}</tr></thead>
+          <tbody>${rows}</tbody></table></div>
+        ${anyMaybe ? `<div class="hint" style="margin-top:7px">
+          The last column is other attribute types in D365 with a similar name &mdash; a suggestion to check,
+          not a finding. One marked <span class="pill yes">set up as this file says</span> is already configured
+          exactly the way this file describes, which often means that is the one meant.</div>` : ''}
+      </div>` : '') +
+    (nearly.length ? `
+      <div class="note warn" style="margin:0 0 12px">
+        <b>${nearly.length} look${nearly.length === 1 ? 's' : ''} like an existing attribute type spelt differently.</b>
+        Set up as written ${nearly.length === 1 ? 'it' : 'they'} would become a second copy in D365, splitting the
+        storefront filter between the two.
+        <div style="margin-top:7px">${nearly.map(n => {
+          // More than one candidate is not a finding, it is a question. Say so
+          // rather than printing whichever happened to be found first.
+          const one = n.cands.length === 1;
+          return `<div class="line"><span class="tilde">~</span><div>the file says <b>${esc(n.name)}</b> &mdash;
+            ${one ? `D365 already has <b style="color:var(--gold)">${esc(n.cands[0].hit.name)}</b>`
+                  : `D365 has <b style="color:var(--warn)">${n.cands.length} that could be meant</b>:
+                     ${n.cands.map(c => `<b style="color:var(--gold)">${esc(c.hit.name)}</b>`).join(' &middot; ')}
+                     <span class="muted">&mdash; check which before setting it up</span>`}
+          </div></div>`;
+        }).join('')}</div>
+      </div>` : '') +
+    (fresh.length ? `
+      <div class="muted" style="margin:0 0 4px"><b style="color:var(--gold)">${fresh.length} genuinely new</b> &mdash; these are the ones to create:</div>
+      ${tagList(fresh.map(t => t.name))}` : `
+      <div class="note ok" style="margin:0 0 12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.2 2.6 2.6 5-5.4"/></svg>
+        <div><b>Nothing new to create.</b> Every attribute type in this file already exists in D365.</div>
+      </div>`);
+
+  return `<details class="vsmaster"${conflict.length || nearly.length ? ' open' : ''} style="margin:0 0 16px">
+      <summary><b>Against the ${master.size} attribute types already in D365</b>
+        <span class="muted">&mdash; ${conflict.length ? conflict.length + ' to settle, ' : ''}${fresh.length} to create</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <div style="padding:0 2px 4px">${head}${body}</div>
+    </details>`;
+}
+
+// The attribute-group panel: which column names the group, what each value in
+// it resolves to, and how many links are still to be made. The mapping is a
+// choice rather than a guess — an attribute group is not the category, and the
+// name a file uses need not be the name D365 uses.
 function checkAttributeTypes() {
   const rows = sheetRows(SUB, 'Attribute Types');
   if (!rows.length) return card('Attribute Types', '<span class="pill err">sheet missing</span>', '');
@@ -682,6 +1204,11 @@ function checkAttributeTypes() {
   }
 
   const list = [...uniq.values()];
+
+  // Attribute-group linking is NOT shown here. It belongs on Step 2 of Item
+  // Attributes, where each block's own group and its own attribute headers sit
+  // side by side — that is the list somebody actually works from.
+
   // the same name surviving twice means it was classified inconsistently
   const byName = {};
   list.forEach(t => byName[norm(t.name)] = (byName[norm(t.name)] || 0) + 1);
@@ -723,10 +1250,12 @@ function checkAttributeTypes() {
       <td>${cls}</td></tr>`;
   }).join('');
 
+  const vs = againstMaster(list);
+
   return card('Attribute Types', `<span class="n">${list.length}</span>`,
-    headerNote(fh, 'Attribute Types') +
+    headerNote(fh, 'Attribute Types') + vs +
     `<div class="muted" style="margin-bottom:10px">
-       <b>${list.length} attribute types to set up</b>
+       <b>${list.length} attribute types in this file</b>
        ${dropped ? `&middot; ${dropped} duplicate row${dropped > 1 ? 's' : ''} removed (same name, filterable and classification)` : ''}
        ${needDecision ? `&middot; <b style="color:var(--bad)">${needDecision} need a decision</b>` : '&middot; all classified'}
        ${inconsistent ? `&middot; <b style="color:var(--warn)">${inconsistent} set up inconsistently</b>` : ''}
@@ -906,6 +1435,15 @@ function checkItemAttributes() {
       <td>${r.cat ? esc(r.cat) : '<span class="pill err">missing</span>'}</td></tr>`).join('');
 
   let tagN = 0;
+  // Each block's category IS its attribute group, which is what makes this the
+  // place the group export earns its keep: of the attribute headers written for
+  // a block, which are not yet linked to that group in D365, and so still have
+  // to be added. The rest are already there and need nothing.
+  const groups = attributeGroups();
+  const groupSeen = new Map();
+  const spelling = new Map();   // headers that matched a group only loosely
+  let needLink = 0;
+
   const step2 = blocks.map((b) => {
     const i = b.itemCol, c = at(b.header, CAT), p = at(b.header, PT);
     const cats = [...new Set(b.items.map(r => txt(r[c])).filter(Boolean))];
@@ -913,13 +1451,55 @@ function checkItemAttributes() {
     const attrs = b.header.filter((hd, x) => hd && x !== i && x !== c && x !== p && !skipped(hd));
     const used = new Set();
     b.items.forEach(r => b.header.forEach((hd, x) => { if (hd && txt(r[x])) used.add(hd); }));
-    const tags = attrs.map(a =>
-      `<span class="tag${used.has(a) ? '' : ' off'}" tabindex="-1" data-tag="${tagN++}">${esc(a)}</span>`).join('');
+
+    // the groups this block belongs to, as far as D365 is concerned
+    const mine = [], against = [];
+    if (groups) for (const cat of cats) {
+      const info = resolveGroupInfo(cat, groups);
+      const g = info ? info.group : null;
+      if (!groupSeen.has(norm(cat))) groupSeen.set(norm(cat), { raw: cat, group: g });
+      if (g) { mine.push(g); against.push({ cat: cat, name: g.name, via: info.via, n: g.types.size }); }
+      else against.push({ cat: cat, name: null });
+    }
+    // an attribute is "to add" when a group this block belongs to does not have it
+    // "not in this group" has to tolerate the two sides being written
+    // differently, or Colour is reported missing from a group holding Color.
+    // Where they only match loosely that is worth saying out loud rather than
+    // quietly accepting — the file and D365 disagree on the name.
+    const inGroup = (g, a) => {
+      if (g.types.has(norm(a))) return true;
+      const hit = [...g.types].find(t => sameAttr(t, a));
+      if (!hit) return false;
+      spelling.set(norm(a) + '\u0001' + hit, { file: a, d365: g.display.get(hit) || hit, group: g.name });
+      return true;
+    };
+    const missingFrom = (a) => mine.filter(g => !inGroup(g, a)).map(g => g.name);
+
+    const tags = attrs.map(a => {
+      const miss = mine.length ? missingFrom(a) : [];
+      if (miss.length) needLink++;
+      return `<span class="tag${used.has(a) ? '' : ' off'}${miss.length ? ' add' : ''}" tabindex="-1"`
+        + ` data-tag="${tagN++}"${miss.length ? ` title="not yet in ${esc(miss.join(', '))}"` : ''}>${esc(a)}</span>`;
+    }).join('');
+
     const blank = attrs.filter(a => !used.has(a));
+    const toAdd = mine.length ? attrs.filter(a => missingFrom(a).length).length : 0;
     return `<tr>
       <td><b>${esc(pts.join(' / ') || '(no product type)')}</b>
           <div class="muted" style="font-size:12px">${esc(cats.join(' / ') || '(no category)')}</div>
-          <div class="muted" style="font-size:11.5px">${b.items.length} item${b.items.length > 1 ? 's' : ''} &middot; row ${b.row + 1}${b.noHeader ? ' &middot; <span style="color:var(--bad)">no header</span>' : ''}</div></td>
+          <div class="muted" style="font-size:11.5px">${b.items.length} item${b.items.length > 1 ? 's' : ''} &middot; row ${b.row + 1}${b.noHeader ? ' &middot; <span style="color:var(--bad)">no header</span>' : ''}</div>
+          ${groups ? `<div class="against">${against.map(a => `<div>
+              ${a.name
+                ? `<span class="muted">checked against</span> <b>${esc(a.name)}</b>
+                   <span class="muted">(${a.n} attribute${a.n === 1 ? '' : 's'})</span>${
+                   a.via === 'mapped' ? ` <span class="pill wrn" title="you chose this group for &quot;${esc(a.cat)}&quot;">you chose this</span>` : ''}`
+                : `<span class="nogroup">&ldquo;${esc(a.cat)}&rdquo; is not an attribute group in D365
+                   &mdash; <b>not checked</b></span>`}
+              ${groupSelect(a.cat, a.name, groups)}
+            </div>`).join('')}</div>` : ''}
+          ${groups && mine.length
+            ? `<div style="font-size:11.5px;margin-top:3px;color:${toAdd ? 'var(--add)' : 'var(--ok)'}">${
+                toAdd ? toAdd + ' to add to this group' : 'all already in this group'}</div>` : ''}</td>
       <td><div class="tags">${tags}</div>
           ${blank.length ? `<div class="hint">faded = column present but empty for every item in this block</div>` : ''}</td>
     </tr>`;
@@ -937,9 +1517,23 @@ function checkItemAttributes() {
     `<div class="muted" style="margin-bottom:6px"><b>Step 1</b> &mdash; item code against product type and category
        ${incomplete ? `&nbsp;<span class="pill err">${incomplete} row${incomplete > 1 ? 's' : ''} incomplete</span>` : '&nbsp;<span class="pill yes">all complete</span>'}</div>
      <div class="scroll" style="max-height:300px"><table><thead><tr><th style="width:190px">Item code</th><th style="width:220px">Product type</th><th>Category</th></tr></thead><tbody>${step1}</tbody></table></div>
-     <div class="muted" style="margin:18px 0 6px"><b>Step 2</b> &mdash; ${blocks.length} block${blocks.length > 1 ? 's' : ''}, each with its own attribute headers</div>
+     <div class="muted" style="margin:18px 0 6px"><b>Step 2</b> &mdash; ${blocks.length} block${blocks.length > 1 ? 's' : ''}, each with its own attribute headers
+       ${groups && needLink ? `&nbsp;<span class="pill add">${needLink} to add to an attribute group</span>` : ''}</div>
+     ${groupPanel(groups, groupSeen, needLink)}
+     ${spelling.size ? `
+       <div class="note warn" style="margin:0 0 12px">
+         <b>${spelling.size} attribute header${spelling.size === 1 ? ' is' : 's are'} spelt differently from D365.</b>
+         ${spelling.size === 1 ? 'It was' : 'They were'} treated as already linked, because
+         ${spelling.size === 1 ? 'it is' : 'they are'} plainly the same attribute &mdash; but the file and
+         D365 do not agree on the name, and whoever types it in will have to pick one.
+         <div style="margin-top:7px">${[...spelling.values()].map(s =>
+           `<div class="line"><span class="tilde">~</span><div>the file says <b>${esc(s.file)}</b>
+             &mdash; D365 calls it <b style="color:var(--gold)">${esc(s.d365)}</b>
+             <span class="muted">in ${esc(s.group)}</span></div></div>`).join('')}</div>
+       </div>` : ''}
      <table><thead><tr><th style="width:240px">Category / last level</th><th>Attribute headers</th></tr></thead><tbody>${step2}</tbody></table>
-     <div class="hint">click a tag, then use &larr; and &rarr; to step through them</div>`);
+     <div class="hint">click a tag, then use &larr; and &rarr; to step through them${
+       groups && needLink ? ' &middot; <span style="color:var(--add);font-weight:600">+ orange</span> = not yet linked to this block&rsquo;s attribute group in D365, so it still has to be added' : ''}</div>`);
 }
 
 // ── Items vs Item Attributes ────────────────────────────────────────────────
@@ -1070,8 +1664,45 @@ function checkItems() {
   // front of you gets reported as "not in this workbook".
   const wanted = (hd) => [...MANDATORY].some(m => colKey(m) === colKey(hd));
 
-  const picker = cols.map(c =>
-    `<label><input type="checkbox" data-col="${esc(c.hd)}" ${wanted(c.hd) ? 'checked' : ''}>${esc(c.hd)}</label>`).join('');
+  // The checkbox list never depends on the uploaded file. It is every column we
+  // know of, from three places, so a column can always be ticked whether or not
+  // this particular workbook carries it:
+  //
+  //   the master template        the canonical list, and the order
+  //   the mandatory list itself  "Pick & Collect" and "Warranty Terms" are
+  //                              required but are NOT in the template, so a
+  //                              template-only list silently dropped them
+  //   this workbook's own        vendor extras, so those can be ticked too
+  //
+  // Anything the file lacks is shown dimmed rather than removed.
+  const tplCols = (sheetRows(TPL, 'Items')[0] || []).map(txt).filter(h => h && !skipped(h));
+  const pick = [];
+  const byKey = new Map();
+  const addCol = (hd) => {
+    hd = txt(hd);
+    if (!hd || skipped(hd)) return;
+    const k = colKey(hd);
+    if (byKey.has(k)) {              // same column written another way
+      const seen = byKey.get(k);
+      if (norm(seen.hd) !== norm(hd)) seen.alt.add(hd);
+      return;
+    }
+    const entry = { hd: hd, alt: new Set() };
+    byKey.set(k, entry); pick.push(entry);
+  };
+  tplCols.forEach(addCol);
+  DEFAULT_MANDATORY.forEach(addCol);
+  [...MANDATORY].forEach(addCol);
+  cols.forEach(c => addCol(c.hd));
+  // which of them this particular workbook actually carries
+  pick.forEach(p => p.here = cols.some(c => colKey(c.hd) === colKey(p.hd)));
+
+  const picker = pick.map(p =>
+    `<label${p.here ? '' : ' class="absent" title="not a column in this workbook"'}>` +
+    `<input type="checkbox" data-col="${esc(p.hd)}" ${wanted(p.hd) ? 'checked' : ''}>` +
+    `${esc(p.hd)}${p.alt.size ? `<span class="muted" title="the same column, spelt differently: ${
+      esc([...p.alt].join(', '))}"> &middot;&middot;</span>` : ''}</label>`).join('');
+  const absent = pick.filter(p => !p.here).length;
 
   const want = cols.filter(c => wanted(c.hd));
   // A column on the mandatory list that the workbook does not have cannot be
@@ -1111,6 +1742,11 @@ function checkItems() {
        <button class="btn" id="mNone">clear all</button>
        <button class="btn" id="mReset">restore defaults</button>
        <span class="muted" style="font-size:12px">remembered on this machine</span>
+     </div>
+     <div class="muted" style="font-size:12px;margin:-4px 0 8px">
+       Every column, whatever this workbook happens to contain &mdash; so the list is the same
+       every time and anything can be ticked in advance.${absent ? ` <span class="absent-key">Dimmed</span> = not a column in
+       this workbook, so it cannot be checked here (${absent} of ${pick.length}).` : ''}
      </div>
      <div class="cols" id="mPicker">${picker}</div>
      ${notHere.length ? `
@@ -1156,6 +1792,22 @@ function card(title, badge, inner) {
   return `<div class="card"><h2>${esc(title)}<span class="n">${badge}</span></h2><div class="body">${inner}</div></div>`;
 }
 
+function groupState(name) {
+  const el = $('groupState');
+  if (!el) return;
+  const g = attributeGroups();
+  el.textContent = name + (g ? ' — ' + g.size + ' attribute groups' : ' — no usable rows found');
+  el.className = g ? 'ok' : 'bad';
+}
+
+function masterState(name) {
+  const el = $('masterState');
+  if (!el) return;
+  const m = masterTypes();
+  el.textContent = name + (m ? ' — ' + m.size + ' attribute types' : ' — no usable rows found');
+  el.className = m ? 'ok' : 'bad';
+}
+
 function tplState(name) {
   // Just the file name — the strip already carries its own "Master template:"
   // label beside this span, so repeating it here read "Master template:
@@ -1171,6 +1823,23 @@ function run() {
     renderReconcile() +
     renderConformance() + checkCategories() + checkAttributeTypes() +
     checkAttributeValues() + checkItemAttributes() + checkItems();
+
+  // and what each unrecognised value in it means in D365
+  document.querySelectorAll('select.groupmap').forEach(s => {
+    s.addEventListener('change', (e) => {
+      const raw = norm(e.target.dataset.raw || '');
+      if (!raw) return;
+      const chosen = e.target.value, auto = e.target.dataset.auto || '';
+      // Choosing what the tool had already worked out means "no override" —
+      // storing it would pin a choice that should keep following the export.
+      // Anything else is stored, INCLUDING the empty "not an attribute group",
+      // which is how an automatic match gets overruled.
+      if (norm(chosen) === norm(auto)) groupMap().delete(raw);
+      else groupMap().set(raw, chosen);
+      saveGroupMap();
+      run();
+    });
+  });
 
   const picker = $('mPicker');
   if (picker) {
@@ -1220,6 +1889,8 @@ function load(file, which) {
   r.onload = (e) => {
     const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
     if (which === 't') { TPL = wb; $('nameT').textContent = file.name; $('slotT').classList.add('on'); tplState(file.name + ' (this session only)'); }
+    else if (which === 'm') { MASTER = wb; $('slotM').classList.add('on'); masterState(file.name + ' (this session only)'); }
+    else if (which === 'g') { MASTERGRP = wb; $('slotG').classList.add('on'); groupState(file.name + ' (this session only)'); }
     else { SUB = wb; showPicked(file.name, file.size); }
     run();
   };
@@ -1251,6 +1922,8 @@ function showPicked(name, bytes) {
 
 $('fileT').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 't'));
 $('fileS').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 's'));
+$('fileM').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 'm'));
+$('fileG').addEventListener('change', e => e.target.files[0] && load(e.target.files[0], 'g'));
 
 // Load a workbook sitting beside this file. The template is picked up without
 // being asked; ?s=<filename> opens a returned workbook the same way.
@@ -1259,6 +1932,8 @@ function beside(name, which) {
     .then(b => {
       const wb = XLSX.read(new Uint8Array(b), { type: 'array' });
       if (which === 't') { TPL = wb; $('slotT').classList.add('on'); tplState(name); }
+      else if (which === 'm') { MASTER = wb; $('slotM').classList.add('on'); masterState(name); }
+      else if (which === 'g') { MASTERGRP = wb; $('slotG').classList.add('on'); groupState(name); }
       else { SUB = wb; showPicked(name, b.byteLength); }
       run();
     }).catch(() => {});
@@ -1272,6 +1947,18 @@ beside(qs.get('t') || 'Product Master Template.xlsx', 't')
       el.textContent = 'NOT FOUND — open settings and choose it';
       el.className = 'bad';
       $('tplBox').open = true;
+    }
+    // Optional. Its absence is reported inside the Attribute Types card rather
+    // than up here, because every other check works perfectly well without it.
+    return beside(qs.get('m') || 'Master Attribute Types.xlsx', 'm');
+  })
+  .then(() => {
+    return beside(qs.get('g') || 'Attribute Group Master.xlsx', 'g');
+  })
+  .then(() => {
+    if (!MASTER) {
+      const el = $('masterState');
+      if (el) { el.textContent = 'not loaded — the file will be judged on its own'; el.className = 'bad'; }
     }
     const s = qs.get('s'); if (s) return beside(s, 's');
   });

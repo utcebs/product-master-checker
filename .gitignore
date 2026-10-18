@@ -7,3 +7,9 @@ Type of file that are sent to us.xlsx
 # scratch
 *.bak
 node_modules/
+
+# The two D365 masters dropped in to drive the attribute-type and
+# attribute-group checks. UTC internal product metadata, and this repo is
+# public — the tool reads them from the folder, it does not need them shipped.
+Master Attribute Types.xlsx
+Attribute Group Master.xlsx
